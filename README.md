@@ -2,14 +2,17 @@
 
 Shared [Husky](https://typicode.github.io/husky/) git hooks for any project — enforces a consistent **branch naming format** and **commit message format** (ticket + type, optionally module), and runs **lint-staged** / type-check / related tests before every commit.
 
-One command installs the same hooks in any repo:
+## Quick start
 
 ```bash
+npm i commit-sheriff
 npx commit-sheriff init
+npx commit-sheriff add-eslint-react   # optional — TypeScript/React + module-boundary ESLint config
 ```
 
 ## Table of contents
 
+- [Quick start](#quick-start)
 - [Why](#why)
 - [Requirements](#requirements)
 - [Install](#install)
