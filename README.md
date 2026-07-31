@@ -77,6 +77,7 @@ Run this once per repo, from the repo root (where `package.json` lives). This wo
 3. Adds a default `commitGuard` block to `package.json` **only if one doesn't already exist** — re-running `init` never overwrites your customized config.
 4. Adds a default `lint-staged` block to `package.json` **only if one doesn't already exist**.
 5. Adds a `"prepare": "husky"` npm script if missing, so hooks are (re)installed automatically after `npm install`.
+6. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically. Otherwise it's skipped and you can add it manually later.
 
 Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe: it refreshes the two hook scripts to the latest version but leaves your `commitGuard` / `lint-staged` config alone.
 

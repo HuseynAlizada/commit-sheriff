@@ -101,11 +101,29 @@ function mergeConfig() {
   }
 }
 
+function isReactTypescriptProject() {
+  const { pkg } = readPackageJson();
+  const deps = Object.assign({}, pkg.dependencies, pkg.devDependencies);
+  return Boolean(deps.react && deps.typescript);
+}
+
 function init() {
   ensureHusky();
   copyHook("commit-msg");
   copyHook("pre-commit");
   mergeConfig();
+
+  if (isReactTypescriptProject()) {
+    console.log(
+      "\n• react + typescript aşkarlandı → TS/React modul-sərhəd ESLint şablonu da əlavə olunur:",
+    );
+    addEslintReact();
+  } else {
+    console.log(
+      "\n(Layihə TS/React kimi aşkarlanmadı — istəsəniz `npx commit-sheriff add-eslint-react` ilə əlavə edə bilərsiniz.)",
+    );
+  }
+
   console.log(
     "\nHazırdır. package.json → commitGuard bölməsində 'project' və lazım olsa 'modules' dəyərlərini tənzimləyin.\n",
   );
