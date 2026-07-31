@@ -1,0 +1,90 @@
+local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || true
+
+# ── Load config from package.json → "naicHooks" (falls back to sane defaults) ──
+# naicHooks: { "useModules": true, "project": "ECIS", "modules": [...], "branchTypes": [...] }
+eval "$(node -e "
+  const fs = require('fs');
+  let cfg = {};
+  try { cfg = (JSON.parse(fs.readFileSync('package.json', 'utf8')).naicHooks) || {}; } catch (e) {}
+  const useModules = cfg.useModules !== undefined ? cfg.useModules : true;
+  const project = cfg.project || 'ECIS';
+  const modules = (cfg.modules && cfg.modules.length ? cfg.modules.join('|') : '[A-Z]+');
+  const branchTypes = (cfg.branchTypes || ['feature','bugfix','improvement','hotfix','refactor']).join('|');
+  console.log('USE_MODULES=' + useModules);
+  console.log('PROJECT=' + project);
+  console.log('MODULES=\"' + modules + '\"');
+  console.log('BRANCH_TYPES=\"' + branchTypes + '\"');
+" 2>/dev/null)"
+
+# ── Branch format (skipped on detached HEAD, e.g. mid-rebase) ──────────────
+if [ -z "$local_branch" ] || [ "$local_branch" = "HEAD" ]; then
+    echo "  Detached HEAD — skipping branch name check."
+elif [ -z "$PROJECT" ]; then
+    echo ""
+    echo "  Could not load naicHooks config — is Node.js installed and is this running from the repo root?"
+    echo ""
+    exit 1
+else
+    if [ "$USE_MODULES" = "true" ]; then
+        # Format : <type>/<MODULE>-<PROJECT>-<NUMBER>-<description>
+        # Example: improvement/PRO-ECIS-609-correct-husky-pre-commit-validation
+        valid_branch_regex="^($BRANCH_TYPES)\/($MODULES)-$PROJECT-[0-9]+-[a-z][a-z0-9-]*$"
+    else
+        # Format : <type>/<PROJECT>-<NUMBER>-<description>
+        # Example: bugfix/ECIS-1093-fix-validation
+        valid_branch_regex="^($BRANCH_TYPES)\/$PROJECT-[0-9]+-[a-z][a-z0-9-]*$"
+    fi
+
+    if [[ ! $local_branch =~ $valid_branch_regex ]]; then
+        echo ""
+        echo "  Invalid branch name: '$local_branch'"
+        echo ""
+        if [ "$USE_MODULES" = "true" ]; then
+            echo "  Required format : <type>/<MODULE>-<PROJECT>-<NUMBER>-<description>"
+            echo "  Example         : improvement/PRO-ECIS-609-correct-husky-pre-commit-validation"
+        else
+            echo "  Required format : <type>/<PROJECT>-<NUMBER>-<description>"
+            echo "  Example         : bugfix/ECIS-1093-fix-meeting-validation"
+        fi
+        echo ""
+        echo "  Types   : $(echo $BRANCH_TYPES | tr '|' ' ')"
+        [ "$USE_MODULES" = "true" ] && echo "  Modules : $(echo $MODULES | tr '|' ' ')"
+        echo "  Project : $PROJECT"
+        echo ""
+        exit 1
+    fi
+fi
+
+# ── Lint + type-check (only runs if the project actually has them) ─────────
+HAS_TYPE_CHECK=$(node -e "process.stdout.write(((require('./package.json').scripts)||{})['type-check'] ? '1' : '0')" 2>/dev/null)
+if [ "$HAS_TYPE_CHECK" = "1" ]; then
+    npm run type-check || exit 1
+fi
+
+HAS_LINT_STAGED=$(node -e "
+  const p = require('./package.json');
+  const deps = Object.assign({}, p.dependencies, p.devDependencies);
+  process.stdout.write(deps['lint-staged'] ? '1' : '0');
+" 2>/dev/null)
+if [ "$HAS_LINT_STAGED" = "1" ]; then
+    npx lint-staged || exit 1
+fi
+
+# ── Related tests (only if vitest is installed) ─────────────────────────────
+HAS_VITEST=$(node -e "
+  const p = require('./package.json');
+  const deps = Object.assign({}, p.dependencies, p.devDependencies);
+  process.stdout.write(deps['vitest'] ? '1' : '0');
+" 2>/dev/null)
+if [ "$HAS_VITEST" = "1" ]; then
+    STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' || true)
+    if [ -n "$STAGED_TS" ]; then
+        if command -v timeout > /dev/null 2>&1; then
+            timeout 60 npx vitest related --run --passWithNoTests $STAGED_TS
+        elif command -v gtimeout > /dev/null 2>&1; then
+            gtimeout 60 npx vitest related --run --passWithNoTests $STAGED_TS
+        else
+            npx vitest related --run --passWithNoTests $STAGED_TS
+        fi
+    fi
+fi
