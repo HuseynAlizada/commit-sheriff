@@ -114,6 +114,6 @@ function init() {
 if (command === "init") {
   init();
 } else {
-  console.log("İstifadə: npx commit-guard init");
+  console.log("İstifadə: npx commit-sheriff init");
   process.exit(command ? 1 : 0);
 }

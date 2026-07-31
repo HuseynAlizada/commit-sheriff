@@ -1,11 +1,11 @@
-# commit-guard
+# commit-sheriff
 
 Shared [Husky](https://typicode.github.io/husky/) git hooks for any project — enforces a consistent **branch naming format** and **commit message format** (ticket + type, optionally module), and runs **lint-staged** / type-check / related tests before every commit.
 
 One command installs the same hooks in any repo:
 
 ```bash
-npx @huseyn01/commit-guard init
+npx commit-sheriff init
 ```
 
 ## Table of contents
@@ -34,7 +34,7 @@ npx @huseyn01/commit-guard init
 
 ## Why
 
-Different repos tend to drift into different commit-message and branch-naming conventions, which makes changelogs, ticket tracing, and code review harder. `commit-guard` gives every project the same two git hooks (`commit-msg`, `pre-commit`) driven by one small config block in `package.json`, so:
+Different repos tend to drift into different commit-message and branch-naming conventions, which makes changelogs, ticket tracing, and code review harder. `commit-sheriff` gives every project the same two git hooks (`commit-msg`, `pre-commit`) driven by one small config block in `package.json`, so:
 
 - Every commit message references a ticket and a change type.
 - Every branch name reflects the same ticket and change type.
@@ -42,14 +42,14 @@ Different repos tend to drift into different commit-message and branch-naming co
 
 ## Requirements
 
-- Node.js (used to read `package.json` and evaluate the config — no runtime dependencies are installed by `commit-guard` itself)
+- Node.js (used to read `package.json` and evaluate the config — no runtime dependencies are installed by `commit-sheriff` itself)
 - Git
 - [`husky`](https://www.npmjs.com/package/husky) v9+ as a devDependency of your project
 
 ## Install
 
 ```bash
-npm install --save-dev @huseyn01/commit-guard husky
+npm install --save-dev commit-sheriff husky
 ```
 
 `lint-staged`, `eslint`, and `prettier` are optional — install them too if you want the pre-commit hook to lint/format staged files:
@@ -61,10 +61,10 @@ npm install --save-dev lint-staged eslint prettier
 ## Usage
 
 ```bash
-npx commit-guard init
+npx commit-sheriff init
 ```
 
-Run this once per repo, from the repo root (where `package.json` lives). This works once `@huseyn01/commit-guard` is installed as a devDependency, since it exposes an unscoped `commit-guard` binary via `node_modules/.bin`. To run it directly without installing first, use the full scoped name: `npx @huseyn01/commit-guard init`.
+Run this once per repo, from the repo root (where `package.json` lives). This works once `commit-sheriff` is installed as a devDependency (it exposes a `commit-sheriff` binary via `node_modules/.bin`), or directly without installing first via `npx commit-sheriff init`.
 
 ## What `init` does
 
@@ -74,7 +74,7 @@ Run this once per repo, from the repo root (where `package.json` lives). This wo
 4. Adds a default `lint-staged` block to `package.json` **only if one doesn't already exist**.
 5. Adds a `"prepare": "husky"` npm script if missing, so hooks are (re)installed automatically after `npm install`.
 
-Re-running `npx commit-guard init` later (e.g. after updating the package) is safe: it refreshes the two hook scripts to the latest version but leaves your `commitGuard` / `lint-staged` config alone.
+Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe: it refreshes the two hook scripts to the latest version but leaves your `commitGuard` / `lint-staged` config alone.
 
 ## Commit message format
 
@@ -239,7 +239,7 @@ The default config added by `init` (only if you don't already have one):
 }
 ```
 
-Adjust freely — `commit-guard` doesn't overwrite it once present.
+Adjust freely — `commit-sheriff` doesn't overwrite it once present.
 
 ## Examples
 
@@ -278,14 +278,14 @@ git commit -m "(ACME-42) [AUTH] feat: add SSO login"
 
 ## Updating
 
-When a new version of `commit-guard` is published:
+When a new version of `commit-sheriff` is published:
 
 ```bash
-npm install @huseyn01/commit-guard@latest --save-dev
-npx commit-guard init
+npm install commit-sheriff@latest --save-dev
+npx commit-sheriff init
 ```
 
-`npm install` updates the package; `npx commit-guard init` re-copies the (possibly changed) `.husky/commit-msg` and `.husky/pre-commit` scripts. It will **not** touch your existing `commitGuard` or `lint-staged` config in `package.json`.
+`npm install` updates the package; `npx commit-sheriff init` re-copies the (possibly changed) `.husky/commit-msg` and `.husky/pre-commit` scripts. It will **not** touch your existing `commitGuard` or `lint-staged` config in `package.json`.
 
 ## Skipping / bypassing hooks
 
