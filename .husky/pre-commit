@@ -1,11 +1,11 @@
 local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || true
 
-# ── Load config from package.json → "naicHooks" (falls back to sane defaults) ──
-# naicHooks: { "useModules": true, "project": "PROJ", "modules": [...], "branchTypes": [...] }
+# ── Load config from package.json → "commitGuard" (falls back to sane defaults) ──
+# commitGuard: { "useModules": true, "project": "PROJ", "modules": [...], "branchTypes": [...] }
 eval "$(node -e "
   const fs = require('fs');
   let cfg = {};
-  try { cfg = (JSON.parse(fs.readFileSync('package.json', 'utf8')).naicHooks) || {}; } catch (e) {}
+  try { cfg = (JSON.parse(fs.readFileSync('package.json', 'utf8')).commitGuard) || {}; } catch (e) {}
   const useModules = cfg.useModules !== undefined ? cfg.useModules : true;
   const project = cfg.project || 'PROJ';
   const modules = (cfg.modules && cfg.modules.length ? cfg.modules.join('|') : '[A-Z]+');
@@ -21,7 +21,7 @@ if [ -z "$local_branch" ] || [ "$local_branch" = "HEAD" ]; then
     echo "  Detached HEAD — skipping branch name check."
 elif [ -z "$PROJECT" ]; then
     echo ""
-    echo "  Could not load naicHooks config — is Node.js installed and is this running from the repo root?"
+    echo "  Could not load commitGuard config — is Node.js installed and is this running from the repo root?"
     echo ""
     exit 1
 else

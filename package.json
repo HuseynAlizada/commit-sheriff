@@ -1,10 +1,10 @@
 {
-  "name": "naic-hooks",
-  "version": "1.0.3",
-  "description": "Shared husky commit-msg / pre-commit hooks for NAIC projects",
+  "name": "commit-guard",
+  "version": "1.0.0",
+  "description": "Shared husky commit-msg / pre-commit hooks enforcing ticket-based commit messages and branch naming",
   "main": "index.js",
   "bin": {
-    "naic-hooks": "bin/naic-hooks.js"
+    "commit-guard": "bin/commit-guard.js"
   },
   "files": [
     "bin",
@@ -22,7 +22,8 @@
     "commitlint",
     "conventional-commits",
     "lint-staged",
-    "naic"
+    "branch-naming",
+    "ticket"
   ],
   "author": "",
   "license": "ISC",
@@ -45,7 +46,7 @@
       "prettier --write"
     ]
   },
-  "naicHooks": {
+  "commitGuard": {
     "useModules": false,
     "project": "PROJ",
     "branchTypes": [

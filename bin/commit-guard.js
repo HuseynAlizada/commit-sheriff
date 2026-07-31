@@ -7,7 +7,7 @@ const { execSync } = require("child_process");
 const cwd = process.cwd();
 const command = process.argv[2];
 
-const DEFAULT_NAIC_HOOKS = {
+const DEFAULT_COMMIT_GUARD = {
   useModules: false,
   project: "PROJ",
   branchTypes: ["feature", "bugfix", "improvement", "hotfix", "refactor"],
@@ -63,12 +63,12 @@ function mergeConfig() {
   const { pkgPath, pkg } = readPackageJson();
   let changed = false;
 
-  if (!pkg.naicHooks) {
-    pkg.naicHooks = DEFAULT_NAIC_HOOKS;
+  if (!pkg.commitGuard) {
+    pkg.commitGuard = DEFAULT_COMMIT_GUARD;
     changed = true;
-    console.log("✔ package.json → naicHooks konfiqurasiyası əlavə olundu");
+    console.log("✔ package.json → commitGuard konfiqurasiyası əlavə olundu");
   } else {
-    console.log("• package.json-da naicHooks artıq var, toxunulmadı");
+    console.log("• package.json-da commitGuard artıq var, toxunulmadı");
   }
 
   if (!pkg["lint-staged"]) {
@@ -96,13 +96,13 @@ function init() {
   copyHook("pre-commit");
   mergeConfig();
   console.log(
-    "\nHazırdır. package.json → naicHooks bölməsində 'project' və lazım olsa 'modules' dəyərlərini tənzimləyin.\n",
+    "\nHazırdır. package.json → commitGuard bölməsində 'project' və lazım olsa 'modules' dəyərlərini tənzimləyin.\n",
   );
 }
 
 if (command === "init") {
   init();
 } else {
-  console.log("İstifadə: npx naic-hooks init");
+  console.log("İstifadə: npx commit-guard init");
   process.exit(command ? 1 : 0);
 }

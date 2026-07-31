@@ -1,11 +1,11 @@
-# naic-hooks
+# commit-guard
 
-Shared [Husky](https://typicode.github.io/husky/) git hooks for NAIC projects — enforces a consistent **branch naming format** and **commit message format** (ticket + type, optionally module), and runs **lint-staged** / type-check / related tests before every commit.
+Shared [Husky](https://typicode.github.io/husky/) git hooks for any project — enforces a consistent **branch naming format** and **commit message format** (ticket + type, optionally module), and runs **lint-staged** / type-check / related tests before every commit.
 
 One command installs the same hooks in any repo:
 
 ```bash
-npx naic-hooks init
+npx commit-guard init
 ```
 
 ## Table of contents
@@ -17,7 +17,7 @@ npx naic-hooks init
 - [What `init` does](#what-init-does)
 - [Commit message format](#commit-message-format)
 - [Branch name format](#branch-name-format)
-- [Configuration (`naicHooks`)](#configuration-naichooks)
+- [Configuration (`commitGuard`)](#configuration-commitguard)
   - [`useModules`](#usemodules)
   - [`project`](#project)
   - [`modules`](#modules)
@@ -34,7 +34,7 @@ npx naic-hooks init
 
 ## Why
 
-Different repos tend to drift into different commit-message and branch-naming conventions, which makes changelogs, ticket tracing, and code review harder. `naic-hooks` gives every project the same two git hooks (`commit-msg`, `pre-commit`) driven by one small config block in `package.json`, so:
+Different repos tend to drift into different commit-message and branch-naming conventions, which makes changelogs, ticket tracing, and code review harder. `commit-guard` gives every project the same two git hooks (`commit-msg`, `pre-commit`) driven by one small config block in `package.json`, so:
 
 - Every commit message references a ticket and a change type.
 - Every branch name reflects the same ticket and change type.
@@ -42,14 +42,14 @@ Different repos tend to drift into different commit-message and branch-naming co
 
 ## Requirements
 
-- Node.js (used to read `package.json` and evaluate the config — no runtime dependencies are installed by `naic-hooks` itself)
+- Node.js (used to read `package.json` and evaluate the config — no runtime dependencies are installed by `commit-guard` itself)
 - Git
 - [`husky`](https://www.npmjs.com/package/husky) v9+ as a devDependency of your project
 
 ## Install
 
 ```bash
-npm install --save-dev naic-hooks husky
+npm install --save-dev commit-guard husky
 ```
 
 `lint-staged`, `eslint`, and `prettier` are optional — install them too if you want the pre-commit hook to lint/format staged files:
@@ -61,7 +61,7 @@ npm install --save-dev lint-staged eslint prettier
 ## Usage
 
 ```bash
-npx naic-hooks init
+npx commit-guard init
 ```
 
 Run this once per repo, from the repo root (where `package.json` lives).
@@ -70,11 +70,11 @@ Run this once per repo, from the repo root (where `package.json` lives).
 
 1. Initializes Husky if it isn't already set up (runs `npx husky init` when `.husky/_/husky.sh` is missing).
 2. Copies the hook scripts into `.husky/commit-msg` and `.husky/pre-commit` (overwriting any existing files with those exact names) and makes them executable.
-3. Adds a default `naicHooks` block to `package.json` **only if one doesn't already exist** — re-running `init` never overwrites your customized config.
+3. Adds a default `commitGuard` block to `package.json` **only if one doesn't already exist** — re-running `init` never overwrites your customized config.
 4. Adds a default `lint-staged` block to `package.json` **only if one doesn't already exist**.
 5. Adds a `"prepare": "husky"` npm script if missing, so hooks are (re)installed automatically after `npm install`.
 
-Re-running `npx naic-hooks init` later (e.g. after updating the package) is safe: it refreshes the two hook scripts to the latest version but leaves your `naicHooks` / `lint-staged` config alone.
+Re-running `npx commit-guard init` later (e.g. after updating the package) is safe: it refreshes the two hook scripts to the latest version but leaves your `commitGuard` / `lint-staged` config alone.
 
 ## Commit message format
 
@@ -135,13 +135,13 @@ improvement/PRO-PROJ-609-correct-husky-pre-commit-validation   # only with useMo
 
 The check is skipped on a detached `HEAD` (e.g. mid-rebase, mid-cherry-pick), so it never blocks those operations.
 
-## Configuration (`naicHooks`)
+## Configuration (`commitGuard`)
 
 Add/edit this block in your project's `package.json` (the `init` command adds a default one for you):
 
 ```json
 {
-  "naicHooks": {
+  "commitGuard": {
     "useModules": false,
     "project": "PROJ",
     "branchTypes": ["feature", "bugfix", "improvement", "hotfix", "refactor"],
@@ -184,7 +184,7 @@ The project key used in the **branch name** check (`<type>/<PROJECT>-<NUMBER>-..
 Only relevant when `useModules: true`. If you want to restrict commits/branches to a specific, known set of module codes, list them explicitly:
 
 ```json
-"naicHooks": {
+"commitGuard": {
   "useModules": true,
   "project": "PROJ",
   "modules": ["AUTH", "BILLING", "REPORTS"]
@@ -228,14 +228,14 @@ The default config added by `init` (only if you don't already have one):
 }
 ```
 
-Adjust freely — `naic-hooks` doesn't overwrite it once present.
+Adjust freely — `commit-guard` doesn't overwrite it once present.
 
 ## Examples
 
 **Minimal project (no modules):**
 
 ```json
-"naicHooks": {
+"commitGuard": {
   "useModules": false,
   "project": "PROJ",
   "branchTypes": ["feature", "bugfix", "improvement", "hotfix", "refactor"],
@@ -251,9 +251,9 @@ git commit -m "(PROJ-1093) fix: correct validation on empty input"
 **Project split into modules, with a locked list:**
 
 ```json
-"naicHooks": {
+"commitGuard": {
   "useModules": true,
-  "project": "ECIS",
+  "project": "ACME",
   "modules": ["AUTH", "BILLING", "REPORTS"],
   "branchTypes": ["feature", "bugfix", "improvement", "hotfix", "refactor"],
   "types": ["feat", "fix", "docs", "chore", "test"]
@@ -261,20 +261,20 @@ git commit -m "(PROJ-1093) fix: correct validation on empty input"
 ```
 
 ```bash
-git checkout -b feature/AUTH-ECIS-42-add-sso
-git commit -m "(ECIS-42) [AUTH] feat: add SSO login"
+git checkout -b feature/AUTH-ACME-42-add-sso
+git commit -m "(ACME-42) [AUTH] feat: add SSO login"
 ```
 
 ## Updating
 
-When a new version of `naic-hooks` is published:
+When a new version of `commit-guard` is published:
 
 ```bash
-npm install naic-hooks@latest --save-dev
-npx naic-hooks init
+npm install commit-guard@latest --save-dev
+npx commit-guard init
 ```
 
-`npm install` updates the package; `npx naic-hooks init` re-copies the (possibly changed) `.husky/commit-msg` and `.husky/pre-commit` scripts. It will **not** touch your existing `naicHooks` or `lint-staged` config in `package.json`.
+`npm install` updates the package; `npx commit-guard init` re-copies the (possibly changed) `.husky/commit-msg` and `.husky/pre-commit` scripts. It will **not** touch your existing `commitGuard` or `lint-staged` config in `package.json`.
 
 ## Skipping / bypassing hooks
 
@@ -288,7 +288,7 @@ Merge, revert, `fixup!`, and `squash!` commits are already exempted from the com
 
 ## Troubleshooting
 
-**"Could not load naicHooks config — is Node.js installed and is this running from the repo root?"**
+**"Could not load commitGuard config — is Node.js installed and is this running from the repo root?"**
 The hook runs `node -e "..."` against `./package.json`. Make sure Node.js is on your `PATH` and that you're committing from the repository root (or that your Git client runs hooks with the repo root as the working directory — some GUI clients get this wrong).
 
 **A commit is accepted even though the message looks wrong**
@@ -298,7 +298,7 @@ Check which branch/tool you actually committed from — hooks only run for the l
 Detached HEAD is exempt, but a normal new branch is checked immediately on first commit — rename it with `git branch -m <valid-name>` and try again.
 
 **`useModules: true` but every module code is accepted**
-That's expected if `naicHooks.modules` is empty/omitted — see [`modules`](#modules). Add an explicit list to restrict it.
+That's expected if `commitGuard.modules` is empty/omitted — see [`modules`](#modules). Add an explicit list to restrict it.
 
 ## Releasing this package
 
