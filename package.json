@@ -31,15 +31,6 @@
   "naicHooks": {
     "useModules": false,
     "project": "PROJ",
-    "modules": [
-      "PRO",
-      "AUTH",
-      "DMS",
-      "PRS",
-      "SET",
-      "VMS",
-      "REP"
-    ],
     "branchTypes": [
       "feature",
       "bugfix",

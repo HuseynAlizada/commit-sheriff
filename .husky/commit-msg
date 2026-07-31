@@ -15,7 +15,7 @@ eval "$(node -e "
   let cfg = {};
   try { cfg = (JSON.parse(fs.readFileSync('package.json', 'utf8')).naicHooks) || {}; } catch (e) {}
   const useModules = cfg.useModules !== undefined ? cfg.useModules : true;
-  const modules = (cfg.modules || ['PRO','AUTH','DMS','PRS','SET','VMS','REP']).join('|');
+  const modules = (cfg.modules && cfg.modules.length ? cfg.modules.join('|') : '[A-Z]+');
   const types = (cfg.types || ['feat','feature','fix','docs','style','refactor','test','chore','perf','ci','build','revert']).join('|');
   console.log('USE_MODULES=' + useModules);
   console.log('MODULES=\"' + modules + '\"');
