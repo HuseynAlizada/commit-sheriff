@@ -5,7 +5,7 @@ Shared [Husky](https://typicode.github.io/husky/) git hooks for any project — 
 One command installs the same hooks in any repo:
 
 ```bash
-npx commit-guard init
+npx @huseyn01/commit-guard init
 ```
 
 ## Table of contents
@@ -49,7 +49,7 @@ Different repos tend to drift into different commit-message and branch-naming co
 ## Install
 
 ```bash
-npm install --save-dev commit-guard husky
+npm install --save-dev @huseyn01/commit-guard husky
 ```
 
 `lint-staged`, `eslint`, and `prettier` are optional — install them too if you want the pre-commit hook to lint/format staged files:
@@ -64,7 +64,7 @@ npm install --save-dev lint-staged eslint prettier
 npx commit-guard init
 ```
 
-Run this once per repo, from the repo root (where `package.json` lives).
+Run this once per repo, from the repo root (where `package.json` lives). This works once `@huseyn01/commit-guard` is installed as a devDependency, since it exposes an unscoped `commit-guard` binary via `node_modules/.bin`. To run it directly without installing first, use the full scoped name: `npx @huseyn01/commit-guard init`.
 
 ## What `init` does
 
@@ -281,7 +281,7 @@ git commit -m "(ACME-42) [AUTH] feat: add SSO login"
 When a new version of `commit-guard` is published:
 
 ```bash
-npm install commit-guard@latest --save-dev
+npm install @huseyn01/commit-guard@latest --save-dev
 npx commit-guard init
 ```
 
