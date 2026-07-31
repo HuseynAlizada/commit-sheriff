@@ -56,11 +56,10 @@ Different repos tend to drift into different commit-message and branch-naming co
 npm install --save-dev commit-sheriff husky
 ```
 
-`lint-staged`, `eslint`, and `prettier` are optional — install them too if you want the pre-commit hook to lint/format staged files:
-
-```bash
-npm install --save-dev lint-staged eslint prettier
-```
+`npx commit-sheriff init` installs `lint-staged`, `eslint`, and `prettier` for you automatically
+(via `npm install --save-dev`) if they're missing, so the pre-commit lint/format step is actually
+functional right away — you don't need to install them yourself first. This only happens as part
+of `init` (see below), not from installing `commit-sheriff` itself.
 
 ## Usage
 
@@ -77,9 +76,18 @@ Run this once per repo, from the repo root (where `package.json` lives). This wo
 3. Creates a default `.commitsheriffrc.json` file at the repo root **only if one doesn't already exist** (and only if there's no legacy `package.json` → `commitGuard` block either — see [Configuration](#configuration-commitsheriffrcjson)) — re-running `init` never overwrites your customized config.
 4. Adds a default `lint-staged` block to `package.json` **only if one doesn't already exist**.
 5. Adds a `"prepare": "husky"` npm script if missing, so hooks are (re)installed automatically after `npm install`.
-6. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically, which writes the ESLint flat-config module-boundary template (as `eslint.config.mjs` if you have none yet, or as a separate `eslint.config.commit-sheriff.mjs` if you already have one) and **overwrites** `.prettierrc.js` with the latest template. Otherwise it's skipped and you can add it manually later.
+6. Installs `lint-staged`, `eslint`, and `prettier` as devDependencies (via `npm install --save-dev`) if any of them are missing, so the pre-commit lint/format step actually runs instead of silently no-oping.
+7. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically, which writes the ESLint flat-config module-boundary template (as `eslint.config.mjs` if you have none yet, or as a separate `eslint.config.commit-sheriff.mjs` if you already have one), **overwrites** `.prettierrc.js` with the latest template, and installs the extra plugins it needs. Otherwise it's skipped and you can add it manually later.
 
 Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe for your project-specific settings: it refreshes the hook scripts and (on react+typescript projects) the ESLint/Prettier templates to the latest version, but leaves your `.commitsheriffrc.json` / `lint-staged` config alone. If you've hand-edited `.prettierrc.js`, or `eslint.config.mjs` in the no-existing-config case, back them up first — those get overwritten on every re-run (the side-file case, `eslint.config.commit-sheriff.mjs`, is also overwritten each time, but your own `eslint.config.mjs` is never touched there).
+
+**Why the auto-install matters**: the pre-commit hook only runs `lint-staged` if it can actually
+find the package — if it's missing, older versions of this hook **silently skipped linting
+entirely**, so a broken/incomplete setup looked identical to a working one until someone noticed
+bad code slipping through. The hook itself is now hardened too: if `package.json` has a
+`lint-staged` config block but the package isn't actually installed (e.g. `node_modules` got
+wiped, or someone added the config by hand), the commit now **fails loudly** with instructions,
+instead of passing silently.
 
 ## Commit message format
 
@@ -227,7 +235,7 @@ Allowed `type` words in **commit messages**, following [Conventional Commits](ht
 In addition to the branch name check, `pre-commit` conditionally runs (skipped when the project doesn't have the relevant tool):
 
 - `npm run type-check` — if a `type-check` script exists in `package.json`
-- `npx lint-staged` — if `lint-staged` is listed as a dependency
+- `npx lint-staged` — if `package.json` has a `lint-staged` config block. If the block exists but the `lint-staged` package itself isn't actually installed, the commit **fails with instructions** rather than silently skipping the check (this used to silently no-op — see [What `init` does](#what-init-does)).
 - `npx vitest related --run --passWithNoTests <staged .ts/.tsx files>` — if `vitest` is listed as a dependency and staged `.ts`/`.tsx` files exist (bounded to 60s via `timeout`/`gtimeout` when available)
 
 Any failure here aborts the commit.
@@ -292,14 +300,23 @@ just fill in `modules` in `.commitsheriffrc.json` and it picks it up automatical
 This template assumes a `src/app/<module>/...` folder layout with `<module>.public.ts` barrel
 files; adjust the paths inside the generated config if your structure differs.
 
-It doesn't install any dependencies for you — install what your project needs, e.g.:
+It installs whatever it needs automatically (via `npm install --save-dev`, same as `init` does for
+`lint-staged`/`eslint`/`prettier`), skipping anything already present:
 
 ```bash
-npm install --save-dev typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin \
-  @eslint/js @eslint/eslintrc eslint-plugin-sonarjs eslint-plugin-import eslint-plugin-prettier \
-  eslint-config-prettier eslint-plugin-react eslint-plugin-react-hooks eslint-plugin-jsx-a11y \
-  eslint-plugin-testing-library @vitest/eslint-plugin eslint-plugin-jest prettier
+npm install --save-dev eslint@^9 typescript @typescript-eslint/parser \
+  @typescript-eslint/eslint-plugin @eslint/js @eslint/eslintrc eslint-plugin-sonarjs \
+  eslint-plugin-import eslint-plugin-prettier eslint-config-prettier eslint-plugin-react \
+  eslint-plugin-react-hooks eslint-plugin-jsx-a11y eslint-plugin-testing-library \
+  @vitest/eslint-plugin eslint-plugin-jest prettier
 ```
+
+`eslint` is pinned to `^9` on purpose rather than left to resolve to whatever `latest` is — plugins
+like `eslint-plugin-react` have historically taken a while to support each new ESLint major, so an
+unpinned install can grab a version the rest of the toolchain doesn't work with yet.
+
+If the install fails (offline, registry issue, etc.), it prints this exact command so you can run
+it yourself.
 
 #### Why flat config?
 

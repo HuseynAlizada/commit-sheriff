@@ -66,13 +66,28 @@ if [ "$HAS_TYPE_CHECK" = "1" ]; then
     npm run type-check || exit 1
 fi
 
-HAS_LINT_STAGED=$(node -e "
-  const p = require('./package.json');
-  const deps = Object.assign({}, p.dependencies, p.devDependencies);
-  process.stdout.write(deps['lint-staged'] ? '1' : '0');
+# Two separate signals on purpose: whether the project *wants* lint-staged (has a config block
+# in package.json — commit-sheriff's own `init` writes one by default) vs. whether the package is
+# *actually installed* right now. If a config exists but the package isn't resolvable, that's not
+# "this project doesn't use lint-staged" — it's a broken setup (e.g. someone ran `npm prune`,
+# skipped `npm install`, or deleted node_modules) and used to fail silently, letting broken commits
+# through with zero lint/format enforcement. Now it fails loudly instead.
+HAS_LINT_CONFIG=$(node -e "
+  process.stdout.write(require('./package.json')['lint-staged'] ? '1' : '0');
 " 2>/dev/null)
-if [ "$HAS_LINT_STAGED" = "1" ]; then
-    npx lint-staged || exit 1
+if [ "$HAS_LINT_CONFIG" = "1" ]; then
+    if node -e "require.resolve('lint-staged')" 2>/dev/null; then
+        npx lint-staged || exit 1
+    else
+        echo ""
+        echo "  package.json-da 'lint-staged' konfiqurasiyası var, amma paketin özü"
+        echo "  node_modules-də tapılmadı — lint/format yoxlanışı keçirilə bilmədi."
+        echo ""
+        echo "  Düzəltmək üçün:"
+        echo "    npm install --save-dev lint-staged"
+        echo ""
+        exit 1
+    fi
 fi
 
 # ── Related tests (only if vitest is installed) ─────────────────────────────

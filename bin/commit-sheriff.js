@@ -91,6 +91,46 @@ function ensureConfigFile() {
   console.log(`✔ ${CONFIG_FILE_NAME} yazıldı`);
 }
 
+// Installs whatever in `packages` isn't already a listed dependency/devDependency, so the hooks
+// this tool wires up are actually functional right after `init`/`add-eslint-react` — not just
+// documented as a copy-paste command the user has to remember to run separately. Falls back to
+// printing the manual command if the install itself fails (offline, registry auth issue, etc.),
+// so the user isn't left silently thinking it worked.
+// Strips a trailing "@version" from an install spec to get the plain package name for looking it
+// up in package.json — careful with scoped packages ("@eslint/js" has no version, but
+// "@vitest/eslint-plugin@^1" does; only the *last* "@" is ever the version separator).
+function packageNameOf(spec) {
+  const atIndex = spec.lastIndexOf("@");
+  return atIndex > 0 ? spec.slice(0, atIndex) : spec;
+}
+
+function ensureDevDeps(packages) {
+  const { pkg } = readPackageJson();
+  const deps = Object.assign({}, pkg.dependencies, pkg.devDependencies);
+  const missing = packages.filter((spec) => !deps[packageNameOf(spec)]);
+  if (!missing.length) {
+    console.log("• Lazımi devDependencies artıq quraşdırılıb, toxunulmadı");
+    return;
+  }
+  console.log(`→ Quraşdırılır: ${missing.join(" ")}`);
+  try {
+    // --legacy-peer-deps: some ESLint plugins lag behind the newest ESLint major in their
+    // declared peerDependencies (e.g. eslint-plugin-import still capping at ^9 while npm already
+    // resolves plain "eslint" to 10.x), which makes npm's default strict peer resolution abort
+    // the whole install with ERESOLVE even though the versions work fine together in practice.
+    execSync(`npm install --save-dev --legacy-peer-deps ${missing.join(" ")}`, {
+      cwd,
+      stdio: "inherit",
+    });
+    console.log("✔ devDependencies quraşdırıldı");
+  } catch {
+    console.log(
+      "\n  Avtomatik quraşdırma alınmadı (şəbəkə/npm xətası ola bilər) — özünüz işlədin:\n" +
+        `    npm install --save-dev ${missing.join(" ")}\n`,
+    );
+  }
+}
+
 function mergeConfig() {
   const { pkgPath, pkg } = readPackageJson();
   let changed = false;
@@ -114,6 +154,18 @@ function mergeConfig() {
   if (changed) {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
   }
+
+  // Without this, the pre-commit hook's `lint-staged` step silently no-ops when the package
+  // itself isn't installed (it only checks whether *some* config/listing exists), so lint/format
+  // checks would never actually run on commit even though everything *looks* set up. `eslint`
+  // and `prettier` are included too since the default lint-staged config above already assumes
+  // both are runnable — otherwise the very first commit would fail on "command not found" instead
+  // of an actual lint/format problem. `eslint` is pinned to ^9 (not left to resolve to whatever
+  // "latest" is) because the plugin ecosystem this tool depends on (eslint-plugin-react, etc.)
+  // regularly lags behind ESLint's newest major for months — installing an unpinned "latest" has
+  // broken real installs (e.g. eslint-plugin-react crashing under ESLint 10's changed rule-context
+  // API) within days of a new major landing on npm.
+  ensureDevDeps(["lint-staged", "eslint@^9", "prettier"]);
 }
 
 function isReactTypescriptProject() {
@@ -145,6 +197,9 @@ function init() {
 }
 
 const ESLINT_REACT_DEV_DEPS = [
+  // Pinned (not left to resolve to "latest") — see the comment on the eslint@^9 install in
+  // mergeConfig() for why: the plugin ecosystem here regularly lags behind ESLint's newest major.
+  "eslint@^9",
   "typescript",
   "@typescript-eslint/parser",
   "@typescript-eslint/eslint-plugin",
@@ -218,10 +273,18 @@ function addEslintReact() {
       "Diqqət: eslint.config.* (və ya yuxarıdakı side-file) və .prettierrc.js hər dəfə\n" +
       "şablonun ən son versiyası ilə üzərinə yazılır (commit-msg/pre-commit hook-ları kimi)\n" +
       "— özünüzə uyğun etdiyiniz dəyişiklikləri qorumaq istəsəniz, əvvəlcə fərqli adla\n" +
-      "backup götürün.\n\n" +
-      "Lazımi devDependencies (özünüz quraşdırın, layihənizin real versiyalarına uyğun):\n" +
-      `  npm install --save-dev ${ESLINT_REACT_DEV_DEPS.join(" ")}\n`,
+      "backup götürün.\n",
   );
+  ensureDevDeps(ESLINT_REACT_DEV_DEPS);
+  if (flatConfigAlreadyExists) {
+    console.log(
+      `\nUnutmayın: ${FLAT_CONFIG_SIDE_FILE} avtomatik import olunmur — onu öz\n` +
+        "eslint.config.* faylınıza əlavə etməsəniz, bu qaydalar heç vaxt işə düşməyəcək\n" +
+        "(yuxarıdakı nümunəyə baxın). Həmçinin, əgər layihənizdə hələ də köhnə .eslintrc.js\n" +
+        "varsa, onu silin — flat config varkən ESLint onu oxumur, üstəlik özü də indi\n" +
+        "adi .js fayl kimi lint xətaları törədə bilər.\n",
+    );
+  }
 }
 
 if (command === "init") {

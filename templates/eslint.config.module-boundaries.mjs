@@ -129,6 +129,12 @@ const moduleBoundaryConfig = [
       "**/*.d.ts",
       "**/*.config.js",
       "**/*.config.mjs",
+      // Root-level CommonJS config dotfiles (this template's own .prettierrc.js among them) aren't
+      // part of the TS project's `include`, so `parserOptions.project: true` below fails to parse
+      // them with a "TSConfig does not include this file" error unless they're excluded here.
+      ".eslintrc.js",
+      ".prettierrc.js",
+      ".prettierrc.cjs",
     ],
   },
   // FlatCompat translates the same legacy-style `extends`/`env`/`parserOptions`/`plugins`/`rules`
