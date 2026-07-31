@@ -144,7 +144,18 @@ Add/edit this block in your project's `package.json` (the `init` command adds a 
   "commitGuard": {
     "useModules": false,
     "project": "PROJ",
-    "branchTypes": ["feature", "bugfix", "improvement", "hotfix", "refactor"],
+    "branchTypes": [
+      "feature",
+      "bugfix",
+      "hotfix",
+      "improvement",
+      "refactor",
+      "release",
+      "chore",
+      "docs",
+      "test",
+      "spike"
+    ],
     "types": [
       "feat",
       "feature",
@@ -195,7 +206,7 @@ If you omit `modules` (or leave it as `[]`), **any** uppercase code is accepted 
 
 ### `branchTypes`
 
-`string[]`, default: `["feature", "bugfix", "improvement", "hotfix", "refactor"]`.
+`string[]`, default: `["feature", "bugfix", "hotfix", "improvement", "refactor", "release", "chore", "docs", "test", "spike"]`.
 
 Allowed prefixes for **branch names**. This is intentionally a coarser, workflow-level vocabulary (what kind of branch is this?) — it does not need to match `types` word-for-word, since a single `feature/...` branch will typically contain several kinds of commits (`feat`, `test`, `docs`, `chore`, ...) as the feature is built.
 
@@ -238,7 +249,7 @@ Adjust freely — `commit-guard` doesn't overwrite it once present.
 "commitGuard": {
   "useModules": false,
   "project": "PROJ",
-  "branchTypes": ["feature", "bugfix", "improvement", "hotfix", "refactor"],
+  "branchTypes": ["feature", "bugfix", "hotfix", "improvement", "refactor", "release", "chore", "docs", "test", "spike"],
   "types": ["feat", "fix", "docs", "chore", "test"]
 }
 ```
@@ -255,7 +266,7 @@ git commit -m "(PROJ-1093) fix: correct validation on empty input"
   "useModules": true,
   "project": "ACME",
   "modules": ["AUTH", "BILLING", "REPORTS"],
-  "branchTypes": ["feature", "bugfix", "improvement", "hotfix", "refactor"],
+  "branchTypes": ["feature", "bugfix", "hotfix", "improvement", "refactor", "release", "chore", "docs", "test", "spike"],
   "types": ["feat", "fix", "docs", "chore", "test"]
 }
 ```

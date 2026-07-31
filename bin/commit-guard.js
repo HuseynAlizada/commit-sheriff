@@ -10,7 +10,18 @@ const command = process.argv[2];
 const DEFAULT_COMMIT_GUARD = {
   useModules: false,
   project: "PROJ",
-  branchTypes: ["feature", "bugfix", "improvement", "hotfix", "refactor"],
+  branchTypes: [
+    "feature",
+    "bugfix",
+    "hotfix",
+    "improvement",
+    "refactor",
+    "release",
+    "chore",
+    "docs",
+    "test",
+    "spike",
+  ],
   types: [
     "feat",
     "feature",

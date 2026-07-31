@@ -9,7 +9,7 @@ eval "$(node -e "
   const useModules = cfg.useModules !== undefined ? cfg.useModules : true;
   const project = cfg.project || 'PROJ';
   const modules = (cfg.modules && cfg.modules.length ? cfg.modules.join('|') : '[A-Z]+');
-  const branchTypes = (cfg.branchTypes || ['feature','bugfix','improvement','hotfix','refactor']).join('|');
+  const branchTypes = (cfg.branchTypes || ['feature','bugfix','hotfix','improvement','refactor','release','chore','docs','test','spike']).join('|');
   console.log('USE_MODULES=' + useModules);
   console.log('PROJECT=' + project);
   console.log('MODULES=\"' + modules + '\"');
