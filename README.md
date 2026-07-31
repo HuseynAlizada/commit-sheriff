@@ -162,7 +162,6 @@ Add/edit this file at your project's **root** (next to `package.json`) — the `
   ],
   "types": [
     "feat",
-    "feature",
     "fix",
     "docs",
     "style",
@@ -219,7 +218,7 @@ Allowed prefixes for **branch names**. This is intentionally a coarser, workflow
 
 ### `types`
 
-`string[]`, default: `["feat", "feature", "fix", "docs", "style", "refactor", "test", "chore", "perf", "ci", "build", "revert"]`.
+`string[]`, default: `["feat", "fix", "docs", "style", "refactor", "test", "chore", "perf", "ci", "build", "revert"]`.
 
 Allowed `type` words in **commit messages**, following [Conventional Commits](https://www.conventionalcommits.org/) style.
 

@@ -21,7 +21,7 @@ eval "$(node -e "
   }
   const useModules = cfg.useModules !== undefined ? cfg.useModules : true;
   const modules = (cfg.modules && cfg.modules.length ? cfg.modules.join('|') : '[A-Z]+');
-  const types = (cfg.types || ['feat','feature','fix','docs','style','refactor','test','chore','perf','ci','build','revert']).join('|');
+  const types = (cfg.types || ['feat','fix','docs','style','refactor','test','chore','perf','ci','build','revert']).join('|');
   console.log('USE_MODULES=' + useModules);
   console.log('MODULES=\"' + modules + '\"');
   console.log('TYPES=\"' + types + '\"');

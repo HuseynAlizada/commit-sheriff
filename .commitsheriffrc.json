@@ -15,7 +15,6 @@
   ],
   "types": [
     "feat",
-    "feature",
     "fix",
     "docs",
     "style",

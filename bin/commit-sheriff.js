@@ -24,7 +24,6 @@ const DEFAULT_COMMIT_GUARD = {
   ],
   types: [
     "feat",
-    "feature",
     "fix",
     "docs",
     "style",
