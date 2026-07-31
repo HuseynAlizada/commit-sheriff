@@ -25,6 +25,7 @@ npx commit-sheriff init
   - [`types`](#types)
 - [Pre-commit checks](#pre-commit-checks)
 - [lint-staged](#lint-staged)
+- [Advanced: ESLint module-boundary template (TypeScript/React)](#advanced-eslint-module-boundary-template-typescriptreact)
 - [Examples](#examples)
 - [Updating](#updating)
 - [Skipping / bypassing hooks](#skipping--bypassing-hooks)
@@ -240,6 +241,40 @@ The default config added by `init` (only if you don't already have one):
 ```
 
 Adjust freely — `commit-sheriff` doesn't overwrite it once present.
+
+## Advanced: ESLint module-boundary template (TypeScript/React)
+
+Optional, separate from `init` — for projects that split feature code into modules (e.g.
+`src/app/auth/`, `src/app/billing/`) and want ESLint to enforce that modules only talk to each
+other through a public barrel file, never through deep/internal paths:
+
+```bash
+npx commit-sheriff add-eslint-react
+```
+
+This copies two templates into your repo root, **without overwriting** anything already there:
+
+- `.eslintrc.js` — legacy-format ESLint config (TypeScript + React + a11y + import + sonarjs +
+  testing-library/jest/vitest rules) with a module-boundary `no-restricted-imports` rule.
+- `.prettierrc.js` — matching Prettier config.
+
+The module list for the boundary rule isn't hardcoded — it's read straight from your
+`commitGuard.modules` array in `package.json` (the same list the commit-msg/branch-name hooks
+use for the `[MODULE]` tag), lowercased. If you haven't set `commitGuard.modules`, a small
+illustrative default (`auth`, `billing`, `reports`, `settings`) is used — open `.eslintrc.js`
+and replace it, or just fill in `commitGuard.modules` and it picks it up automatically.
+
+This template assumes a `src/app/<module>/...` folder layout with `<module>.public.ts` barrel
+files; adjust the paths inside `.eslintrc.js` if your structure differs.
+
+It doesn't install any dependencies for you — install what your project needs, e.g.:
+
+```bash
+npm install --save-dev typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin \
+  eslint-plugin-sonarjs eslint-plugin-import eslint-plugin-prettier eslint-config-prettier \
+  eslint-plugin-react eslint-plugin-react-hooks eslint-plugin-jsx-a11y \
+  eslint-plugin-testing-library eslint-plugin-vitest eslint-plugin-jest prettier
+```
 
 ## Examples
 
