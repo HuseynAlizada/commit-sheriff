@@ -1,7 +1,4 @@
-#!/bin/sh
-[ -f "$(dirname "$0")/_/husky.sh" ] && . "$(dirname "$0")/_/husky.sh"
-
-local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || true
 
 # ── Load config from package.json → "naicHooks" (falls back to sane defaults) ──
 # naicHooks: { "useModules": true, "project": "ECIS", "modules": [...], "branchTypes": [...] }

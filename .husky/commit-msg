@@ -1,6 +1,3 @@
-#!/bin/sh
-[ -f "$(dirname "$0")/_/husky.sh" ] && . "$(dirname "$0")/_/husky.sh"
-
 commit_msg_file="$1"
 commit_msg=$(cat "$commit_msg_file")
 
@@ -68,7 +65,7 @@ fi
 if [ "$USE_MODULES" = "true" ]; then
     # ── Keep [MODULE] consistent with the branch ────────────────────────────
     # e.g. bugfix/SET-ECIS-1127-... -> commit must be tagged [SET]
-    local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+    local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || true
     branch_module=$(printf '%s' "$local_branch" | sed -nE "s#^[a-z]+/($MODULES)-.*#\1#p")
     commit_module=$(printf '%s' "$commit_msg" | sed -nE 's/^\([A-Z]+-[0-9]+\) \[([A-Z]+)\].*/\1/p')
 
