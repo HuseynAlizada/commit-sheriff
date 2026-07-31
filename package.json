@@ -1,0 +1,65 @@
+{
+  "name": "husky-npm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.2.0",
+    "prettier": "^3.9.6"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css,scss,html}": [
+      "prettier --write"
+    ]
+  },
+  "naicHooks": {
+    "useModules": false,
+    "project": "PROJ",
+    "modules": [
+      "PRO",
+      "AUTH",
+      "DMS",
+      "PRS",
+      "SET",
+      "VMS",
+      "REP"
+    ],
+    "branchTypes": [
+      "feature",
+      "bugfix",
+      "improvement",
+      "hotfix",
+      "refactor"
+    ],
+    "types": [
+      "feat",
+      "feature",
+      "fix",
+      "docs",
+      "style",
+      "refactor",
+      "test",
+      "chore",
+      "perf",
+      "ci",
+      "build",
+      "revert"
+    ]
+  }
+}
