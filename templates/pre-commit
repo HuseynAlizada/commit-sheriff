@@ -1,13 +1,13 @@
 local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || true
 
 # ── Load config from package.json → "naicHooks" (falls back to sane defaults) ──
-# naicHooks: { "useModules": true, "project": "ECIS", "modules": [...], "branchTypes": [...] }
+# naicHooks: { "useModules": true, "project": "PROJ", "modules": [...], "branchTypes": [...] }
 eval "$(node -e "
   const fs = require('fs');
   let cfg = {};
   try { cfg = (JSON.parse(fs.readFileSync('package.json', 'utf8')).naicHooks) || {}; } catch (e) {}
   const useModules = cfg.useModules !== undefined ? cfg.useModules : true;
-  const project = cfg.project || 'ECIS';
+  const project = cfg.project || 'PROJ';
   const modules = (cfg.modules && cfg.modules.length ? cfg.modules.join('|') : '[A-Z]+');
   const branchTypes = (cfg.branchTypes || ['feature','bugfix','improvement','hotfix','refactor']).join('|');
   console.log('USE_MODULES=' + useModules);
@@ -27,11 +27,11 @@ elif [ -z "$PROJECT" ]; then
 else
     if [ "$USE_MODULES" = "true" ]; then
         # Format : <type>/<MODULE>-<PROJECT>-<NUMBER>-<description>
-        # Example: improvement/PRO-ECIS-609-correct-husky-pre-commit-validation
+        # Example: improvement/PRO-PROJ-609-correct-husky-pre-commit-validation
         valid_branch_regex="^($BRANCH_TYPES)\/($MODULES)-$PROJECT-[0-9]+-[a-z][a-z0-9-]*$"
     else
         # Format : <type>/<PROJECT>-<NUMBER>-<description>
-        # Example: bugfix/ECIS-1093-fix-validation
+        # Example: bugfix/PROJ-1093-fix-validation
         valid_branch_regex="^($BRANCH_TYPES)\/$PROJECT-[0-9]+-[a-z][a-z0-9-]*$"
     fi
 
@@ -41,10 +41,10 @@ else
         echo ""
         if [ "$USE_MODULES" = "true" ]; then
             echo "  Required format : <type>/<MODULE>-<PROJECT>-<NUMBER>-<description>"
-            echo "  Example         : improvement/PRO-ECIS-609-correct-husky-pre-commit-validation"
+            echo "  Example         : improvement/PRO-PROJ-609-correct-husky-pre-commit-validation"
         else
             echo "  Required format : <type>/<PROJECT>-<NUMBER>-<description>"
-            echo "  Example         : bugfix/ECIS-1093-fix-meeting-validation"
+            echo "  Example         : bugfix/PROJ-1093-fix-meeting-validation"
         fi
         echo ""
         echo "  Types   : $(echo $BRANCH_TYPES | tr '|' ' ')"

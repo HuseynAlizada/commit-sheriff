@@ -32,11 +32,11 @@ fi
 # ── Commit message format ───────────────────────────────────────────────────
 if [ "$USE_MODULES" = "true" ]; then
     # Format : (TICKET) [MODULE] type(scope): message
-    # Example: (ECIS-1077) [SET] feature(organization structure): implement organization management
+    # Example: (PROJ-1077) [SET] feature(organization structure): implement organization management
     valid_commit_regex="^\([A-Z]+-[0-9]+\) \[($MODULES)\] ($TYPES)(\([^)]+\))?: .+"
 else
     # Format : (TICKET) type(scope): message
-    # Example: (ECIS-1077) feature(organization structure): implement organization management
+    # Example: (PROJ-1077) feature(organization structure): implement organization management
     valid_commit_regex="^\([A-Z]+-[0-9]+\) ($TYPES)(\([^)]+\))?: .+"
 fi
 
@@ -46,15 +46,15 @@ if [[ ! $commit_msg =~ $valid_commit_regex ]]; then
     echo ""
     if [ "$USE_MODULES" = "true" ]; then
         echo "  Required format : (TICKET) [MODULE] type(scope): message"
-        echo "  Example         : (ECIS-1077) [SET] feature(organization structure): implement organization management"
-        echo "  Example         : (ECIS-1191) [SET] fix(register): reset registration session on menu reopen"
+        echo "  Example         : (PROJ-1077) [SET] feature(organization structure): implement organization management"
+        echo "  Example         : (PROJ-1191) [SET] fix(register): reset registration session on menu reopen"
     else
         echo "  Required format : (TICKET) type(scope): message"
-        echo "  Example         : (ECIS-1077) feature(organization structure): implement organization management"
-        echo "  Example         : (ECIS-1191) fix(register): reset registration session on menu reopen"
+        echo "  Example         : (PROJ-1077) feature(organization structure): implement organization management"
+        echo "  Example         : (PROJ-1191) fix(register): reset registration session on menu reopen"
     fi
     echo ""
-    echo "  Ticket  : (PROJECT-NUMBER), e.g. (ECIS-1191)"
+    echo "  Ticket  : (PROJECT-NUMBER), e.g. (PROJ-1191)"
     [ "$USE_MODULES" = "true" ] && echo "  Modules : $(echo $MODULES | tr '|' ' ')"
     echo "  Types   : $(echo $TYPES | tr '|' ' ')"
     echo "  Scope   : optional — e.g. fix(register): ..."
@@ -64,7 +64,7 @@ fi
 
 if [ "$USE_MODULES" = "true" ]; then
     # ── Keep [MODULE] consistent with the branch ────────────────────────────
-    # e.g. bugfix/SET-ECIS-1127-... -> commit must be tagged [SET]
+    # e.g. bugfix/SET-PROJ-1127-... -> commit must be tagged [SET]
     local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || true
     branch_module=$(printf '%s' "$local_branch" | sed -nE "s#^[a-z]+/($MODULES)-.*#\1#p")
     commit_module=$(printf '%s' "$commit_msg" | sed -nE 's/^\([A-Z]+-[0-9]+\) \[([A-Z]+)\].*/\1/p')
@@ -73,7 +73,7 @@ if [ "$USE_MODULES" = "true" ]; then
         echo ""
         echo "  Commit module [$commit_module] does not match the branch module [$branch_module]."
         echo "  Branch : $local_branch"
-        echo "  Use [$branch_module] to match the branch, e.g. (ECIS-1191) [$branch_module] fix(scope): ..."
+        echo "  Use [$branch_module] to match the branch, e.g. (PROJ-1191) [$branch_module] fix(scope): ..."
         echo ""
         exit 1
     fi
