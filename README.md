@@ -77,9 +77,9 @@ Run this once per repo, from the repo root (where `package.json` lives). This wo
 3. Creates a default `.commitsheriffrc.json` file at the repo root **only if one doesn't already exist** (and only if there's no legacy `package.json` → `commitGuard` block either — see [Configuration](#configuration-commitsheriffrcjson)) — re-running `init` never overwrites your customized config.
 4. Adds a default `lint-staged` block to `package.json` **only if one doesn't already exist**.
 5. Adds a `"prepare": "husky"` npm script if missing, so hooks are (re)installed automatically after `npm install`.
-6. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically, which **overwrites** `.eslintrc.js` and `.prettierrc.js` with the latest template. Otherwise it's skipped and you can add it manually later.
+6. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically, which writes the ESLint flat-config module-boundary template (as `eslint.config.mjs` if you have none yet, or as a separate `eslint.config.commit-sheriff.mjs` if you already have one) and **overwrites** `.prettierrc.js` with the latest template. Otherwise it's skipped and you can add it manually later.
 
-Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe for your project-specific settings: it refreshes the hook scripts and (on react+typescript projects) the ESLint/Prettier templates to the latest version, but leaves your `.commitsheriffrc.json` / `lint-staged` config alone. If you've hand-edited `.eslintrc.js` or `.prettierrc.js`, back them up first — those two get overwritten on every re-run.
+Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe for your project-specific settings: it refreshes the hook scripts and (on react+typescript projects) the ESLint/Prettier templates to the latest version, but leaves your `.commitsheriffrc.json` / `lint-staged` config alone. If you've hand-edited `.prettierrc.js`, or `eslint.config.mjs` in the no-existing-config case, back them up first — those get overwritten on every re-run (the side-file case, `eslint.config.commit-sheriff.mjs`, is also overwritten each time, but your own `eslint.config.mjs` is never touched there).
 
 ## Commit message format
 
@@ -257,36 +257,63 @@ other through a public barrel file, never through deep/internal paths:
 npx commit-sheriff add-eslint-react
 ```
 
-This copies two templates into your repo root, **always overwriting** whatever is already
-there at those exact filenames (same behavior as the `commit-msg`/`pre-commit` hooks — re-running
-it refreshes both files to the latest version of the template):
+This ships as a **flat config** (`eslint.config.*`, ESLint 9+ format), not the legacy
+`.eslintrc.js` format — see [why](#why-flat-config) below. Where it lands depends on what your
+project already has:
 
-- `.eslintrc.js` — legacy-format ESLint config (TypeScript + React + a11y + import + sonarjs +
-  testing-library/jest/vitest rules) with a module-boundary `no-restricted-imports` rule.
-- `.prettierrc.js` — matching Prettier config.
+- **No `eslint.config.*` yet** → written directly as `eslint.config.mjs` (your main config).
+- **You already have one** (e.g. Next.js's own `create-next-app`-generated `eslint.config.mjs`)
+  → left untouched; the module-boundary rules go into a separate
+  `eslint.config.commit-sheriff.mjs` instead, printed with a snippet to import + spread it into
+  your existing config:
 
-If you've customized either file by hand, back it up under a different name before re-running
-`add-eslint-react` (or `init` on a react+typescript project, which calls it automatically) —
-your edits will be replaced.
+  ```js
+  import moduleBoundaries from "./eslint.config.commit-sheriff.mjs";
+  export default [
+    ...compat.extends("next/core-web-vitals", "next/typescript"),
+    ...moduleBoundaries,
+  ];
+  ```
+
+Either way, `.prettierrc.js` is also written/refreshed, **always overwriting** whatever is
+already there at that filename (same behavior as the `commit-msg`/`pre-commit` hooks — re-running
+`add-eslint-react` refreshes it to the latest version of the template). If you've customized it
+by hand, back it up under a different name first — your edits will be replaced. The same applies
+to `eslint.config.mjs` when it's the one written directly (the no-existing-config case above); the
+side-file case never touches your own config.
 
 The module list for the boundary rule isn't hardcoded — it's read straight from the `modules`
 array in your root `.commitsheriffrc.json` (the same list the commit-msg/branch-name hooks use
 for the `[MODULE]` tag), lowercased. For older installs still using `package.json`'s
 `commitGuard.modules`, that's used as a fallback. If neither is set, a small illustrative default
-(`auth`, `billing`, `reports`, `settings`) is used — open `.eslintrc.js` and replace it, or just
-fill in `modules` in `.commitsheriffrc.json` and it picks it up automatically.
+(`auth`, `billing`, `reports`, `settings`) is used — open the generated config and replace it, or
+just fill in `modules` in `.commitsheriffrc.json` and it picks it up automatically.
 
 This template assumes a `src/app/<module>/...` folder layout with `<module>.public.ts` barrel
-files; adjust the paths inside `.eslintrc.js` if your structure differs.
+files; adjust the paths inside the generated config if your structure differs.
 
 It doesn't install any dependencies for you — install what your project needs, e.g.:
 
 ```bash
 npm install --save-dev typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin \
-  eslint-plugin-sonarjs eslint-plugin-import eslint-plugin-prettier eslint-config-prettier \
-  eslint-plugin-react eslint-plugin-react-hooks eslint-plugin-jsx-a11y \
-  eslint-plugin-testing-library eslint-plugin-vitest eslint-plugin-jest prettier
+  @eslint/js @eslint/eslintrc eslint-plugin-sonarjs eslint-plugin-import eslint-plugin-prettier \
+  eslint-config-prettier eslint-plugin-react eslint-plugin-react-hooks eslint-plugin-jsx-a11y \
+  eslint-plugin-testing-library @vitest/eslint-plugin eslint-plugin-jest prettier
 ```
+
+#### Why flat config?
+
+ESLint 9+ looks for `eslint.config.*` first and, if one is found, **ignores `.eslintrc.js`
+entirely** — there's no fallback. Since frameworks like Next.js already scaffold their own
+`eslint.config.mjs`, a legacy-only `.eslintrc.js` template would sit right next to it and never
+actually run (this was a real bug: an unused `useState` import went completely unflagged because
+the module-boundary config was silently dead). The flat config here uses `FlatCompat` (the same
+official migration helper Next.js's own generated config uses internally) so the exact same rule
+set works natively under ESLint 9+, in both the standalone and merge-into-existing-config cases.
+
+A legacy `.eslintrc.js` version of this template (`eslintrc.module-boundaries.js`) still ships
+inside the package for reference/manual use on pure ESLint 8 projects with no flat config support
+at all, but the CLI no longer writes it by default.
 
 ## Examples
 

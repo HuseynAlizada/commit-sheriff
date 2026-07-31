@@ -148,6 +148,8 @@ const ESLINT_REACT_DEV_DEPS = [
   "typescript",
   "@typescript-eslint/parser",
   "@typescript-eslint/eslint-plugin",
+  "@eslint/js",
+  "@eslint/eslintrc",
   "eslint-plugin-sonarjs",
   "eslint-plugin-import",
   "eslint-plugin-prettier",
@@ -156,10 +158,22 @@ const ESLINT_REACT_DEV_DEPS = [
   "eslint-plugin-react-hooks",
   "eslint-plugin-jsx-a11y",
   "eslint-plugin-testing-library",
-  "eslint-plugin-vitest",
+  "@vitest/eslint-plugin",
   "eslint-plugin-jest",
   "prettier",
 ];
+
+const FLAT_CONFIG_CANDIDATES = [
+  "eslint.config.js",
+  "eslint.config.mjs",
+  "eslint.config.cjs",
+  "eslint.config.ts",
+];
+const FLAT_CONFIG_SIDE_FILE = "eslint.config.commit-sheriff.mjs";
+
+function hasFlatEslintConfig() {
+  return FLAT_CONFIG_CANDIDATES.some((name) => fs.existsSync(path.join(cwd, name)));
+}
 
 function copyTemplateOverwrite(templateName, destName) {
   const src = path.join(__dirname, "..", "templates", templateName);
@@ -167,18 +181,44 @@ function copyTemplateOverwrite(templateName, destName) {
   const existed = fs.existsSync(dest);
   fs.copyFileSync(src, dest);
   console.log(existed ? `✔ ${destName} yeniləndi (üzərinə yazıldı)` : `✔ ${destName} yazıldı`);
+  return dest;
 }
 
 function addEslintReact() {
-  copyTemplateOverwrite("eslintrc.module-boundaries.js", ".eslintrc.js");
+  // ESLint 9+ prioritizes flat config (`eslint.config.*`) and completely ignores a legacy
+  // `.eslintrc.js` when one is present — no fallback. Frameworks like Next.js already scaffold
+  // their own `eslint.config.mjs`, so if we wrote only `.eslintrc.js` here it would silently
+  // never run for the majority of modern projects. We therefore ship the flat-config template
+  // as the primary artifact, and decide where it lands based on what the project already has.
+  const flatConfigAlreadyExists = hasFlatEslintConfig();
+
+  if (flatConfigAlreadyExists) {
+    copyTemplateOverwrite("eslint.config.module-boundaries.mjs", FLAT_CONFIG_SIDE_FILE);
+    console.log(
+      `\n• Layihədə artıq öz eslint.config.* faylınız var — ona toxunulmadı.\n` +
+        `  Modul-sərhəd qaydaları ayrıca ${FLAT_CONFIG_SIDE_FILE} faylına yazıldı.\n` +
+        `  Özünüzün eslint.config.* faylınıza əlavə edin, məsələn:\n\n` +
+        `    import moduleBoundaries from "./${FLAT_CONFIG_SIDE_FILE}";\n` +
+        `    export default [\n` +
+        `      ...compat.extends("next/core-web-vitals", "next/typescript"),\n` +
+        `      ...moduleBoundaries,\n` +
+        `    ];\n`,
+    );
+  } else {
+    copyTemplateOverwrite("eslint.config.module-boundaries.mjs", "eslint.config.mjs");
+    console.log(
+      "\n• Layihədə eslint.config.* yox idi — eslint.config.mjs olaraq birbaşa yazıldı.\n",
+    );
+  }
   copyTemplateOverwrite("prettier.module-boundaries.js", ".prettierrc.js");
   console.log(
-    "\nBu şablon TypeScript/React + modul-sərhəd (module-boundary) qaydaları üçündür.\n" +
+    "Bu şablon TypeScript/React + modul-sərhəd (module-boundary) qaydaları üçündür.\n" +
       `Modul siyahısı ${CONFIG_FILE_NAME}.modules-dən avtomatik oxunur (boşdursa nümunə\n` +
-      "siyahı istifadə olunur — .eslintrc.js içindəki şərhi oxuyun).\n\n" +
-      "Diqqət: .eslintrc.js və .prettierrc.js hər dəfə şablonun ən son versiyası ilə\n" +
-      "üzərinə yazılır (commit-msg/pre-commit hook-ları kimi) — özünüzə uyğun etdiyiniz\n" +
-      "dəyişiklikləri qorumaq istəsəniz, əvvəlcə fərqli adla backup götürün.\n\n" +
+      "siyahı istifadə olunur — şablon faylı içindəki şərhi oxuyun).\n\n" +
+      "Diqqət: eslint.config.* (və ya yuxarıdakı side-file) və .prettierrc.js hər dəfə\n" +
+      "şablonun ən son versiyası ilə üzərinə yazılır (commit-msg/pre-commit hook-ları kimi)\n" +
+      "— özünüzə uyğun etdiyiniz dəyişiklikləri qorumaq istəsəniz, əvvəlcə fərqli adla\n" +
+      "backup götürün.\n\n" +
       "Lazımi devDependencies (özünüz quraşdırın, layihənizin real versiyalarına uyğun):\n" +
       `  npm install --save-dev ${ESLINT_REACT_DEV_DEPS.join(" ")}\n`,
   );
