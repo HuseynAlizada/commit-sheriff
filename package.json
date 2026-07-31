@@ -1,6 +1,6 @@
 {
   "name": "@huseyn01/commit-guard",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Shared husky commit-msg / pre-commit hooks enforcing ticket-based commit messages and branch naming",
   "main": "index.js",
   "bin": {
