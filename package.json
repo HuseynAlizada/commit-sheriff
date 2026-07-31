@@ -1,6 +1,6 @@
 {
   "name": "naic-hooks",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Shared husky commit-msg / pre-commit hooks for NAIC projects",
   "main": "index.js",
   "bin": {
