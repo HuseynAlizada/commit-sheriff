@@ -161,24 +161,24 @@ const ESLINT_REACT_DEV_DEPS = [
   "prettier",
 ];
 
-function copyTemplateIfMissing(templateName, destName) {
+function copyTemplateOverwrite(templateName, destName) {
   const src = path.join(__dirname, "..", "templates", templateName);
   const dest = path.join(cwd, destName);
-  if (fs.existsSync(dest)) {
-    console.log(`• ${destName} artıq var, toxunulmadı`);
-    return;
-  }
+  const existed = fs.existsSync(dest);
   fs.copyFileSync(src, dest);
-  console.log(`✔ ${destName} yazıldı`);
+  console.log(existed ? `✔ ${destName} yeniləndi (üzərinə yazıldı)` : `✔ ${destName} yazıldı`);
 }
 
 function addEslintReact() {
-  copyTemplateIfMissing("eslintrc.module-boundaries.js", ".eslintrc.js");
-  copyTemplateIfMissing("prettier.module-boundaries.js", ".prettierrc.js");
+  copyTemplateOverwrite("eslintrc.module-boundaries.js", ".eslintrc.js");
+  copyTemplateOverwrite("prettier.module-boundaries.js", ".prettierrc.js");
   console.log(
     "\nBu şablon TypeScript/React + modul-sərhəd (module-boundary) qaydaları üçündür.\n" +
       `Modul siyahısı ${CONFIG_FILE_NAME}.modules-dən avtomatik oxunur (boşdursa nümunə\n` +
       "siyahı istifadə olunur — .eslintrc.js içindəki şərhi oxuyun).\n\n" +
+      "Diqqət: .eslintrc.js və .prettierrc.js hər dəfə şablonun ən son versiyası ilə\n" +
+      "üzərinə yazılır (commit-msg/pre-commit hook-ları kimi) — özünüzə uyğun etdiyiniz\n" +
+      "dəyişiklikləri qorumaq istəsəniz, əvvəlcə fərqli adla backup götürün.\n\n" +
       "Lazımi devDependencies (özünüz quraşdırın, layihənizin real versiyalarına uyğun):\n" +
       `  npm install --save-dev ${ESLINT_REACT_DEV_DEPS.join(" ")}\n`,
   );

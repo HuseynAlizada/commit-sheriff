@@ -77,9 +77,9 @@ Run this once per repo, from the repo root (where `package.json` lives). This wo
 3. Creates a default `.commitsheriffrc.json` file at the repo root **only if one doesn't already exist** (and only if there's no legacy `package.json` → `commitGuard` block either — see [Configuration](#configuration-commitsheriffrcjson)) — re-running `init` never overwrites your customized config.
 4. Adds a default `lint-staged` block to `package.json` **only if one doesn't already exist**.
 5. Adds a `"prepare": "husky"` npm script if missing, so hooks are (re)installed automatically after `npm install`.
-6. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically. Otherwise it's skipped and you can add it manually later.
+6. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically, which **overwrites** `.eslintrc.js` and `.prettierrc.js` with the latest template. Otherwise it's skipped and you can add it manually later.
 
-Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe: it refreshes the two hook scripts to the latest version but leaves your `.commitsheriffrc.json` / `lint-staged` config alone.
+Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe for your project-specific settings: it refreshes the hook scripts and (on react+typescript projects) the ESLint/Prettier templates to the latest version, but leaves your `.commitsheriffrc.json` / `lint-staged` config alone. If you've hand-edited `.eslintrc.js` or `.prettierrc.js`, back them up first — those two get overwritten on every re-run.
 
 ## Commit message format
 
@@ -257,11 +257,17 @@ other through a public barrel file, never through deep/internal paths:
 npx commit-sheriff add-eslint-react
 ```
 
-This copies two templates into your repo root, **without overwriting** anything already there:
+This copies two templates into your repo root, **always overwriting** whatever is already
+there at those exact filenames (same behavior as the `commit-msg`/`pre-commit` hooks — re-running
+it refreshes both files to the latest version of the template):
 
 - `.eslintrc.js` — legacy-format ESLint config (TypeScript + React + a11y + import + sonarjs +
   testing-library/jest/vitest rules) with a module-boundary `no-restricted-imports` rule.
 - `.prettierrc.js` — matching Prettier config.
+
+If you've customized either file by hand, back it up under a different name before re-running
+`add-eslint-react` (or `init` on a react+typescript project, which calls it automatically) —
+your edits will be replaced.
 
 The module list for the boundary rule isn't hardcoded — it's read straight from the `modules`
 array in your root `.commitsheriffrc.json` (the same list the commit-msg/branch-name hooks use
