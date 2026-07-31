@@ -20,7 +20,7 @@ npx commit-sheriff add-eslint-react   # optional — TypeScript/React + module-b
 - [What `init` does](#what-init-does)
 - [Commit message format](#commit-message-format)
 - [Branch name format](#branch-name-format)
-- [Configuration (`commitGuard`)](#configuration-commitguard)
+- [Configuration (`.commitsheriffrc.json`)](#configuration-commitsheriffrcjson)
   - [`useModules`](#usemodules)
   - [`project`](#project)
   - [`modules`](#modules)
@@ -38,7 +38,7 @@ npx commit-sheriff add-eslint-react   # optional — TypeScript/React + module-b
 
 ## Why
 
-Different repos tend to drift into different commit-message and branch-naming conventions, which makes changelogs, ticket tracing, and code review harder. `commit-sheriff` gives every project the same two git hooks (`commit-msg`, `pre-commit`) driven by one small config block in `package.json`, so:
+Different repos tend to drift into different commit-message and branch-naming conventions, which makes changelogs, ticket tracing, and code review harder. `commit-sheriff` gives every project the same two git hooks (`commit-msg`, `pre-commit`) driven by one small root-level `.commitsheriffrc.json` config file, so:
 
 - Every commit message references a ticket and a change type.
 - Every branch name reflects the same ticket and change type.
@@ -74,12 +74,12 @@ Run this once per repo, from the repo root (where `package.json` lives). This wo
 
 1. Initializes Husky if it isn't already set up (runs `npx husky init` when `.husky/_/husky.sh` is missing).
 2. Copies the hook scripts into `.husky/commit-msg` and `.husky/pre-commit` (overwriting any existing files with those exact names) and makes them executable.
-3. Adds a default `commitGuard` block to `package.json` **only if one doesn't already exist** — re-running `init` never overwrites your customized config.
+3. Creates a default `.commitsheriffrc.json` file at the repo root **only if one doesn't already exist** (and only if there's no legacy `package.json` → `commitGuard` block either — see [Configuration](#configuration-commitsheriffrcjson)) — re-running `init` never overwrites your customized config.
 4. Adds a default `lint-staged` block to `package.json` **only if one doesn't already exist**.
 5. Adds a `"prepare": "husky"` npm script if missing, so hooks are (re)installed automatically after `npm install`.
 6. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically. Otherwise it's skipped and you can add it manually later.
 
-Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe: it refreshes the two hook scripts to the latest version but leaves your `commitGuard` / `lint-staged` config alone.
+Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe: it refreshes the two hook scripts to the latest version but leaves your `.commitsheriffrc.json` / `lint-staged` config alone.
 
 ## Commit message format
 
@@ -140,46 +140,48 @@ improvement/PRO-PROJ-609-correct-husky-pre-commit-validation   # only with useMo
 
 The check is skipped on a detached `HEAD` (e.g. mid-rebase, mid-cherry-pick), so it never blocks those operations.
 
-## Configuration (`commitGuard`)
+## Configuration (`.commitsheriffrc.json`)
 
-Add/edit this block in your project's `package.json` (the `init` command adds a default one for you):
+Add/edit this file at your project's **root** (next to `package.json`) — the `init` command creates a default one for you:
 
 ```json
 {
-  "commitGuard": {
-    "useModules": false,
-    "project": "PROJ",
-    "branchTypes": [
-      "feature",
-      "bugfix",
-      "hotfix",
-      "improvement",
-      "refactor",
-      "release",
-      "chore",
-      "docs",
-      "test",
-      "spike"
-    ],
-    "types": [
-      "feat",
-      "feature",
-      "fix",
-      "docs",
-      "style",
-      "refactor",
-      "test",
-      "chore",
-      "perf",
-      "ci",
-      "build",
-      "revert"
-    ]
-  }
+  "useModules": false,
+  "project": "PROJ",
+  "branchTypes": [
+    "feature",
+    "bugfix",
+    "hotfix",
+    "improvement",
+    "refactor",
+    "release",
+    "chore",
+    "docs",
+    "test",
+    "spike"
+  ],
+  "types": [
+    "feat",
+    "feature",
+    "fix",
+    "docs",
+    "style",
+    "refactor",
+    "test",
+    "chore",
+    "perf",
+    "ci",
+    "build",
+    "revert"
+  ]
 }
 ```
 
-All keys are optional; anything you omit falls back to the default shown above.
+All keys are optional; anything you omit falls back to the default shown above. Edit this file whenever you like — the hooks read it fresh on every commit, so changes take effect immediately, no reinstall or `init` re-run needed.
+
+### Legacy `package.json` → `commitGuard` (backward compatibility)
+
+Versions of `commit-sheriff` before this config-file change stored the same settings under a `commitGuard` key in `package.json` instead. That still works: if no `.commitsheriffrc.json` file exists, the hooks (and the `add-eslint-react` template) fall back to reading `package.json`'s `commitGuard` block automatically, so existing installs keep working without any changes required. New installs (and any project without an existing `commitGuard` block) get the new `.commitsheriffrc.json` file instead — this is the recommended location going forward. To migrate an existing project by hand, move the contents of `commitGuard` out into a new root-level `.commitsheriffrc.json` file and delete the `commitGuard` key from `package.json`.
 
 ### `useModules`
 
@@ -200,7 +202,7 @@ The project key used in the **branch name** check (`<type>/<PROJECT>-<NUMBER>-..
 Only relevant when `useModules: true`. If you want to restrict commits/branches to a specific, known set of module codes, list them explicitly:
 
 ```json
-"commitGuard": {
+{
   "useModules": true,
   "project": "PROJ",
   "modules": ["AUTH", "BILLING", "REPORTS"]
@@ -262,11 +264,12 @@ This copies two templates into your repo root, **without overwriting** anything 
   testing-library/jest/vitest rules) with a module-boundary `no-restricted-imports` rule.
 - `.prettierrc.js` — matching Prettier config.
 
-The module list for the boundary rule isn't hardcoded — it's read straight from your
-`commitGuard.modules` array in `package.json` (the same list the commit-msg/branch-name hooks
-use for the `[MODULE]` tag), lowercased. If you haven't set `commitGuard.modules`, a small
-illustrative default (`auth`, `billing`, `reports`, `settings`) is used — open `.eslintrc.js`
-and replace it, or just fill in `commitGuard.modules` and it picks it up automatically.
+The module list for the boundary rule isn't hardcoded — it's read straight from the `modules`
+array in your root `.commitsheriffrc.json` (the same list the commit-msg/branch-name hooks use
+for the `[MODULE]` tag), lowercased. For older installs still using `package.json`'s
+`commitGuard.modules`, that's used as a fallback. If neither is set, a small illustrative default
+(`auth`, `billing`, `reports`, `settings`) is used — open `.eslintrc.js` and replace it, or just
+fill in `modules` in `.commitsheriffrc.json` and it picks it up automatically.
 
 This template assumes a `src/app/<module>/...` folder layout with `<module>.public.ts` barrel
 files; adjust the paths inside `.eslintrc.js` if your structure differs.
@@ -282,13 +285,24 @@ npm install --save-dev typescript @typescript-eslint/parser @typescript-eslint/e
 
 ## Examples
 
-**Minimal project (no modules):**
+**Minimal project (no modules)** — `.commitsheriffrc.json`:
 
 ```json
-"commitGuard": {
+{
   "useModules": false,
   "project": "PROJ",
-  "branchTypes": ["feature", "bugfix", "hotfix", "improvement", "refactor", "release", "chore", "docs", "test", "spike"],
+  "branchTypes": [
+    "feature",
+    "bugfix",
+    "hotfix",
+    "improvement",
+    "refactor",
+    "release",
+    "chore",
+    "docs",
+    "test",
+    "spike"
+  ],
   "types": ["feat", "fix", "docs", "chore", "test"]
 }
 ```
@@ -298,14 +312,25 @@ git checkout -b bugfix/PROJ-1093-fix-validation
 git commit -m "(PROJ-1093) fix: correct validation on empty input"
 ```
 
-**Project split into modules, with a locked list:**
+**Project split into modules, with a locked list** — `.commitsheriffrc.json`:
 
 ```json
-"commitGuard": {
+{
   "useModules": true,
   "project": "ACME",
   "modules": ["AUTH", "BILLING", "REPORTS"],
-  "branchTypes": ["feature", "bugfix", "hotfix", "improvement", "refactor", "release", "chore", "docs", "test", "spike"],
+  "branchTypes": [
+    "feature",
+    "bugfix",
+    "hotfix",
+    "improvement",
+    "refactor",
+    "release",
+    "chore",
+    "docs",
+    "test",
+    "spike"
+  ],
   "types": ["feat", "fix", "docs", "chore", "test"]
 }
 ```
@@ -324,7 +349,7 @@ npm install commit-sheriff@latest --save-dev
 npx commit-sheriff init
 ```
 
-`npm install` updates the package; `npx commit-sheriff init` re-copies the (possibly changed) `.husky/commit-msg` and `.husky/pre-commit` scripts. It will **not** touch your existing `commitGuard` or `lint-staged` config in `package.json`.
+`npm install` updates the package; `npx commit-sheriff init` re-copies the (possibly changed) `.husky/commit-msg` and `.husky/pre-commit` scripts. It will **not** touch your existing `.commitsheriffrc.json` (or legacy `commitGuard` in `package.json`) or `lint-staged` config.
 
 ## Skipping / bypassing hooks
 
@@ -339,7 +364,7 @@ Merge, revert, `fixup!`, and `squash!` commits are already exempted from the com
 ## Troubleshooting
 
 **"Could not load commitGuard config — is Node.js installed and is this running from the repo root?"**
-The hook runs `node -e "..."` against `./package.json`. Make sure Node.js is on your `PATH` and that you're committing from the repository root (or that your Git client runs hooks with the repo root as the working directory — some GUI clients get this wrong).
+The hook runs `node -e "..."` against `./.commitsheriffrc.json` (falling back to `./package.json`'s `commitGuard` block for older installs). Make sure Node.js is on your `PATH` and that you're committing from the repository root (or that your Git client runs hooks with the repo root as the working directory — some GUI clients get this wrong).
 
 **A commit is accepted even though the message looks wrong**
 Check which branch/tool you actually committed from — hooks only run for the local Git client that has Husky's `core.hooksPath` configured (`git config core.hooksPath` should print `.husky/_`). GUI clients or CI systems that bypass local hooks (or commit via the GitHub/GitLab API) will not trigger them.
@@ -348,7 +373,7 @@ Check which branch/tool you actually committed from — hooks only run for the l
 Detached HEAD is exempt, but a normal new branch is checked immediately on first commit — rename it with `git branch -m <valid-name>` and try again.
 
 **`useModules: true` but every module code is accepted**
-That's expected if `commitGuard.modules` is empty/omitted — see [`modules`](#modules). Add an explicit list to restrict it.
+That's expected if `modules` is empty/omitted in `.commitsheriffrc.json` — see [`modules`](#modules). Add an explicit list to restrict it.
 
 ## Releasing this package
 

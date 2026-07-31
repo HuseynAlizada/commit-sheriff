@@ -1,11 +1,16 @@
 local_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || true
 
-# ── Load config from package.json → "commitGuard" (falls back to sane defaults) ──
-# commitGuard: { "useModules": true, "project": "PROJ", "modules": [...], "branchTypes": [...] }
+# ── Load config: .commitsheriffrc.json at repo root (falls back to package.json → "commitGuard"
+# ── for older installs, then to sane defaults) ──────────────────────────────
+# .commitsheriffrc.json: { "useModules": true, "project": "PROJ", "modules": [...], "branchTypes": [...] }
 eval "$(node -e "
   const fs = require('fs');
   let cfg = {};
-  try { cfg = (JSON.parse(fs.readFileSync('package.json', 'utf8')).commitGuard) || {}; } catch (e) {}
+  try {
+    cfg = JSON.parse(fs.readFileSync('.commitsheriffrc.json', 'utf8'));
+  } catch (e) {
+    try { cfg = (JSON.parse(fs.readFileSync('package.json', 'utf8')).commitGuard) || {}; } catch (e2) {}
+  }
   const useModules = cfg.useModules !== undefined ? cfg.useModules : true;
   const project = cfg.project || 'PROJ';
   const modules = (cfg.modules && cfg.modules.length ? cfg.modules.join('|') : '[A-Z]+');

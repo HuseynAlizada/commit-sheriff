@@ -43,6 +43,8 @@ const DEFAULT_LINT_STAGED = {
   "*.{json,md,css,scss,html}": ["prettier --write"],
 };
 
+const CONFIG_FILE_NAME = ".commitsheriffrc.json";
+
 function readPackageJson() {
   const pkgPath = path.join(cwd, "package.json");
   if (!fs.existsSync(pkgPath)) {
@@ -70,17 +72,31 @@ function copyHook(name) {
   console.log(`✔ .husky/${name} yazıldı`);
 }
 
+function ensureConfigFile() {
+  const configPath = path.join(cwd, CONFIG_FILE_NAME);
+  const { pkg } = readPackageJson();
+
+  if (fs.existsSync(configPath)) {
+    console.log(`• ${CONFIG_FILE_NAME} artıq var, toxunulmadı`);
+    return;
+  }
+
+  if (pkg.commitGuard) {
+    console.log(
+      `• package.json-da köhnə tərzli 'commitGuard' bloku tapıldı — ${CONFIG_FILE_NAME} yaradılmadı, köhnə konfiqurasiya işləməyə davam edir.`,
+    );
+    return;
+  }
+
+  fs.writeFileSync(configPath, JSON.stringify(DEFAULT_COMMIT_GUARD, null, 2) + "\n");
+  console.log(`✔ ${CONFIG_FILE_NAME} yazıldı`);
+}
+
 function mergeConfig() {
   const { pkgPath, pkg } = readPackageJson();
   let changed = false;
 
-  if (!pkg.commitGuard) {
-    pkg.commitGuard = DEFAULT_COMMIT_GUARD;
-    changed = true;
-    console.log("✔ package.json → commitGuard konfiqurasiyası əlavə olundu");
-  } else {
-    console.log("• package.json-da commitGuard artıq var, toxunulmadı");
-  }
+  ensureConfigFile();
 
   if (!pkg["lint-staged"]) {
     pkg["lint-staged"] = DEFAULT_LINT_STAGED;
@@ -125,7 +141,7 @@ function init() {
   }
 
   console.log(
-    "\nHazırdır. package.json → commitGuard bölməsində 'project' və lazım olsa 'modules' dəyərlərini tənzimləyin.\n",
+    `\nHazırdır. ${CONFIG_FILE_NAME} faylında 'project' və lazım olsa 'modules' dəyərlərini tənzimləyin.\n`,
   );
 }
 
@@ -162,7 +178,7 @@ function addEslintReact() {
   copyTemplateIfMissing("prettier.module-boundaries.js", ".prettierrc.js");
   console.log(
     "\nBu şablon TypeScript/React + modul-sərhəd (module-boundary) qaydaları üçündür.\n" +
-      "Modul siyahısı package.json → commitGuard.modules-dən avtomatik oxunur (boşdursa nümunə\n" +
+      `Modul siyahısı ${CONFIG_FILE_NAME}.modules-dən avtomatik oxunur (boşdursa nümunə\n` +
       "siyahı istifadə olunur — .eslintrc.js içindəki şərhi oxuyun).\n\n" +
       "Lazımi devDependencies (özünüz quraşdırın, layihənizin real versiyalarına uyğun):\n" +
       `  npm install --save-dev ${ESLINT_REACT_DEV_DEPS.join(" ")}\n`,

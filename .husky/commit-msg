@@ -8,12 +8,17 @@ case "$commit_msg" in
     ;;
 esac
 
-# ── Load config from package.json → "commitGuard" (falls back to sane defaults) ──
-# commitGuard: { "useModules": true, "modules": [...], "types": [...] }
+# ── Load config: .commitsheriffrc.json at repo root (falls back to package.json → "commitGuard"
+# ── for older installs, then to sane defaults) ──────────────────────────────
+# .commitsheriffrc.json: { "useModules": true, "modules": [...], "types": [...] }
 eval "$(node -e "
   const fs = require('fs');
   let cfg = {};
-  try { cfg = (JSON.parse(fs.readFileSync('package.json', 'utf8')).commitGuard) || {}; } catch (e) {}
+  try {
+    cfg = JSON.parse(fs.readFileSync('.commitsheriffrc.json', 'utf8'));
+  } catch (e) {
+    try { cfg = (JSON.parse(fs.readFileSync('package.json', 'utf8')).commitGuard) || {}; } catch (e2) {}
+  }
   const useModules = cfg.useModules !== undefined ? cfg.useModules : true;
   const modules = (cfg.modules && cfg.modules.length ? cfg.modules.join('|') : '[A-Z]+');
   const types = (cfg.types || ['feat','feature','fix','docs','style','refactor','test','chore','perf','ci','build','revert']).join('|');

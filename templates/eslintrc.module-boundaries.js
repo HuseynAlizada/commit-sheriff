@@ -16,17 +16,28 @@
  *     are the one place allowed to import every module directly (that's the whole point of a
  *     router/registry), so the boundary rule is turned off just for those two files.
  *
- * Module list: instead of hardcoding module names, this reads `commitGuard.modules` from
- * package.json (the same list used by the commit-sheriff commit-msg/branch-name hooks — see
- * README), so the two conventions (module tags in commits/branches, and module boundaries in
- * imports) stay in sync automatically. If `commitGuard.modules` is empty/absent, a small
- * illustrative default is used instead — replace it with your real module names.
+ * Module list: instead of hardcoding module names, this reads `modules` from the repo's
+ * `.commitsheriffrc.json` (the same list used by the commit-sheriff commit-msg/branch-name
+ * hooks — see README), so the two conventions (module tags in commits/branches, and module
+ * boundaries in imports) stay in sync automatically. For older installs that still keep their
+ * config under `package.json`'s `commitGuard` block, that location is used as a fallback. If
+ * neither is found, a small illustrative default is used instead — replace it with your real
+ * module names.
  */
 
 const fs = require("fs");
 const path = require("path");
 
 function loadAppModules() {
+  try {
+    const rcPath = path.join(__dirname, ".commitsheriffrc.json");
+    const rc = JSON.parse(fs.readFileSync(rcPath, "utf8"));
+    if (Array.isArray(rc.modules) && rc.modules.length) {
+      return rc.modules.map((m) => String(m).toLowerCase());
+    }
+  } catch {
+    // fall through to the legacy package.json lookup below
+  }
   try {
     const pkgPath = path.join(__dirname, "package.json");
     const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));

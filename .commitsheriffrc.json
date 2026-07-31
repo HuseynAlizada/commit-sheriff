@@ -1,0 +1,30 @@
+{
+  "useModules": false,
+  "project": "PROJ",
+  "branchTypes": [
+    "feature",
+    "bugfix",
+    "hotfix",
+    "improvement",
+    "refactor",
+    "release",
+    "chore",
+    "docs",
+    "test",
+    "spike"
+  ],
+  "types": [
+    "feat",
+    "feature",
+    "fix",
+    "docs",
+    "style",
+    "refactor",
+    "test",
+    "chore",
+    "perf",
+    "ci",
+    "build",
+    "revert"
+  ]
+}
