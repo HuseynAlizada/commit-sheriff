@@ -5,10 +5,14 @@ Shared [Husky](https://typicode.github.io/husky/) git hooks for any project — 
 ## Quick start
 
 ```bash
-npm i commit-sheriff
+npm install --save-dev commit-sheriff husky
 npx commit-sheriff init
-npx commit-sheriff add-eslint-react   # optional — TypeScript/React + module-boundary ESLint config
+npx commit-sheriff add-eslint-react   # optional — only needed if init didn't auto-detect react+typescript
 ```
+
+This is the full flow end to end. The `Install`, `Usage`, and `What init does` sections below repeat
+these same commands with more context/explanation — you don't need to run anything extra from
+there, they're not additional steps.
 
 ## Table of contents
 
@@ -77,9 +81,9 @@ Run this once per repo, from the repo root (where `package.json` lives). This wo
 4. Adds a default `lint-staged` block to `package.json` **only if one doesn't already exist**.
 5. Adds a `"prepare": "husky"` npm script if missing, so hooks are (re)installed automatically after `npm install`.
 6. Installs `lint-staged`, `eslint`, and `prettier` as devDependencies (via `npm install --save-dev`) if any of them are missing, so the pre-commit lint/format step actually runs instead of silently no-oping.
-7. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically, which writes the ESLint flat-config module-boundary template (as `eslint.config.mjs` if you have none yet, or as a separate `eslint.config.commit-sheriff.mjs` if you already have one), **overwrites** `.prettierrc.js` with the latest template, and installs the extra plugins it needs. Otherwise it's skipped and you can add it manually later.
+7. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically, which **overwrites** `eslint.config.mjs` and `.prettierrc.js` with the latest templates (folding in `next/core-web-vitals`/`next/typescript` automatically if `next` is detected) and installs the extra plugins it needs — no manual merge step. Otherwise it's skipped and you can add it manually later.
 
-Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe for your project-specific settings: it refreshes the hook scripts and (on react+typescript projects) the ESLint/Prettier templates to the latest version, but leaves your `.commitsheriffrc.json` / `lint-staged` config alone. If you've hand-edited `.prettierrc.js`, or `eslint.config.mjs` in the no-existing-config case, back them up first — those get overwritten on every re-run (the side-file case, `eslint.config.commit-sheriff.mjs`, is also overwritten each time, but your own `eslint.config.mjs` is never touched there).
+Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe for your project-specific settings: it refreshes the hook scripts and (on react+typescript projects) the ESLint/Prettier templates to the latest version, but leaves your `.commitsheriffrc.json` / `lint-staged` config alone. `eslint.config.mjs`, `eslint.config.commit-sheriff.mjs`, and `.prettierrc.js` are **always overwritten** on every re-run — back them up under a different name first if you've hand-edited them.
 
 **Why the auto-install matters**: the pre-commit hook only runs `lint-staged` if it can actually
 find the package — if it's missing, older versions of this hook **silently skipped linting
@@ -272,29 +276,25 @@ npx commit-sheriff add-eslint-react
 ```
 
 This ships as a **flat config** (`eslint.config.*`, ESLint 9+ format), not the legacy
-`.eslintrc.js` format — see [why](#why-flat-config) below. Where it lands depends on what your
-project already has:
+`.eslintrc.js` format — see [why](#why-flat-config) below. It always writes two files, no manual
+merge step required, ever:
 
-- **No `eslint.config.*` yet** → written directly as `eslint.config.mjs` (your main config).
-- **You already have one** (e.g. Next.js's own `create-next-app`-generated `eslint.config.mjs`)
-  → left untouched; the module-boundary rules go into a separate
-  `eslint.config.commit-sheriff.mjs` instead, printed with a snippet to import + spread it into
-  your existing config:
+- `eslint.config.commit-sheriff.mjs` — the actual ruleset (module-boundary rules + all the
+  recommended plugins: TypeScript, React, hooks, a11y, sonarjs, import, testing-library, vitest,
+  jest, prettier).
+- `eslint.config.mjs` — the entry point ESLint actually reads, generated fresh every run to import
+  the file above. **If you already had an `eslint.config.mjs` (e.g. Next.js's own
+  `create-next-app`-generated one), it is fully overwritten** — not merged, not left alone. If
+  `next` is detected in your `dependencies`, the generated entry point folds in
+  `next/core-web-vitals`/`next/typescript` automatically (via the same `FlatCompat` pattern Next's
+  own generated config uses) so you don't lose Next-specific linting; `eslint-config-next` is
+  auto-installed too if it's missing. Any other hand-written customizations in your previous
+  `eslint.config.mjs` are not preserved — back it up under a different name first if you need them.
 
-  ```js
-  import moduleBoundaries from "./eslint.config.commit-sheriff.mjs";
-  export default [
-    ...compat.extends("next/core-web-vitals", "next/typescript"),
-    ...moduleBoundaries,
-  ];
-  ```
-
-Either way, `.prettierrc.js` is also written/refreshed, **always overwriting** whatever is
-already there at that filename (same behavior as the `commit-msg`/`pre-commit` hooks — re-running
-`add-eslint-react` refreshes it to the latest version of the template). If you've customized it
-by hand, back it up under a different name first — your edits will be replaced. The same applies
-to `eslint.config.mjs` when it's the one written directly (the no-existing-config case above); the
-side-file case never touches your own config.
+`.prettierrc.js` is written/refreshed the same way — **always overwritten** with the latest
+template (same behavior as the `commit-msg`/`pre-commit` hooks). This trade-off is intentional:
+zero manual steps for the common case, at the cost of not preserving bespoke prior ESLint/Prettier
+setups.
 
 The module list for the boundary rule isn't hardcoded — it's read straight from the `modules`
 array in your root `.commitsheriffrc.json` (the same list the commit-msg/branch-name hooks use
@@ -338,7 +338,7 @@ entirely** — there's no fallback. Since frameworks like Next.js already scaffo
 actually run (this was a real bug: an unused `useState` import went completely unflagged because
 the module-boundary config was silently dead). The flat config here uses `FlatCompat` (the same
 official migration helper Next.js's own generated config uses internally) so the exact same rule
-set works natively under ESLint 9+, in both the standalone and merge-into-existing-config cases.
+set works natively under ESLint 9+, whether or not the project already had its own flat config.
 
 A legacy `.eslintrc.js` version of this template (`eslintrc.module-boundaries.js`) still ships
 inside the package for reference/manual use on pure ESLint 8 projects with no flat config support

@@ -229,17 +229,12 @@ const ESLINT_REACT_DEV_DEPS = [
   "prettier",
 ];
 
-const FLAT_CONFIG_CANDIDATES = [
-  "eslint.config.js",
-  "eslint.config.mjs",
-  "eslint.config.cjs",
-  "eslint.config.ts",
-];
-const FLAT_CONFIG_SIDE_FILE = "eslint.config.commit-sheriff.mjs";
-
-function hasFlatEslintConfig() {
-  return FLAT_CONFIG_CANDIDATES.some((name) => fs.existsSync(path.join(cwd, name)));
-}
+// The module-boundary + all-recommended-plugins ruleset lives in this file, copied verbatim from
+// the template every run. `eslint.config.mjs` itself (the file ESLint actually reads) is then
+// generated fresh below to import it — no manual merge step for the user, ever. This intentionally
+// means a fully hand-written `eslint.config.mjs` gets replaced: simplicity/zero-manual-steps was
+// chosen over preserving bespoke prior setups, matching how `.prettierrc.js` already worked.
+const RULES_FILE = "eslint.config.commit-sheriff.mjs";
 
 function copyTemplateOverwrite(templateName, destName) {
   const src = path.join(__dirname, "..", "templates", templateName);
@@ -250,50 +245,71 @@ function copyTemplateOverwrite(templateName, destName) {
   return dest;
 }
 
-function addEslintReact() {
-  // ESLint 9+ prioritizes flat config (`eslint.config.*`) and completely ignores a legacy
-  // `.eslintrc.js` when one is present — no fallback. Frameworks like Next.js already scaffold
-  // their own `eslint.config.mjs`, so if we wrote only `.eslintrc.js` here it would silently
-  // never run for the majority of modern projects. We therefore ship the flat-config template
-  // as the primary artifact, and decide where it lands based on what the project already has.
-  const flatConfigAlreadyExists = hasFlatEslintConfig();
+function writeFileOverwrite(destName, content) {
+  const dest = path.join(cwd, destName);
+  const existed = fs.existsSync(dest);
+  fs.writeFileSync(dest, content);
+  console.log(existed ? `✔ ${destName} yeniləndi (üzərinə yazıldı)` : `✔ ${destName} yazıldı`);
+  return dest;
+}
 
-  if (flatConfigAlreadyExists) {
-    copyTemplateOverwrite("eslint.config.module-boundaries.mjs", FLAT_CONFIG_SIDE_FILE);
-    console.log(
-      `\n• Layihədə artıq öz eslint.config.* faylınız var — ona toxunulmadı.\n` +
-        `  Modul-sərhəd qaydaları ayrıca ${FLAT_CONFIG_SIDE_FILE} faylına yazıldı.\n` +
-        `  Özünüzün eslint.config.* faylınıza əlavə edin, məsələn:\n\n` +
-        `    import moduleBoundaries from "./${FLAT_CONFIG_SIDE_FILE}";\n` +
-        `    export default [\n` +
-        `      ...compat.extends("next/core-web-vitals", "next/typescript"),\n` +
-        `      ...moduleBoundaries,\n` +
-        `    ];\n`,
-    );
-  } else {
-    copyTemplateOverwrite("eslint.config.module-boundaries.mjs", "eslint.config.mjs");
-    console.log(
-      "\n• Layihədə eslint.config.* yox idi — eslint.config.mjs olaraq birbaşa yazıldı.\n",
+function buildEslintEntryConfig(hasNext) {
+  if (!hasNext) {
+    return (
+      `import moduleBoundaries from "./${RULES_FILE}";\n\n` +
+      `export default [...moduleBoundaries];\n`
     );
   }
+  // Next.js scaffolds its own eslint.config.mjs with `next/core-web-vitals`/`next/typescript` —
+  // those are folded in here (via the same FlatCompat pattern Next's own generated config uses)
+  // so overwriting the file doesn't silently drop Next-specific linting.
+  return (
+    `import { fileURLToPath } from "node:url";\n` +
+    `import path from "node:path";\n` +
+    `import { FlatCompat } from "@eslint/eslintrc";\n` +
+    `import moduleBoundaries from "./${RULES_FILE}";\n\n` +
+    `const compat = new FlatCompat({\n` +
+    `  baseDirectory: path.dirname(fileURLToPath(import.meta.url)),\n` +
+    `});\n\n` +
+    `export default [\n` +
+    `  ...compat.extends("next/core-web-vitals", "next/typescript"),\n` +
+    `  ...moduleBoundaries,\n` +
+    `];\n`
+  );
+}
+
+function addEslintReact() {
+  const { pkg } = readPackageJson();
+  const deps = Object.assign({}, pkg.dependencies, pkg.devDependencies);
+  const hasNext = Boolean(deps.next);
+
+  copyTemplateOverwrite("eslint.config.module-boundaries.mjs", RULES_FILE);
+  writeFileOverwrite("eslint.config.mjs", buildEslintEntryConfig(hasNext));
   copyTemplateOverwrite("prettier.module-boundaries.js", ".prettierrc.js");
+
   console.log(
-    "Bu şablon TypeScript/React + modul-sərhəd (module-boundary) qaydaları üçündür.\n" +
+    "\nBu şablon TypeScript/React + modul-sərhəd (module-boundary) qaydaları üçündür.\n" +
       `Modul siyahısı ${CONFIG_FILE_NAME}.modules-dən avtomatik oxunur (boşdursa nümunə\n` +
       "siyahı istifadə olunur — şablon faylı içindəki şərhi oxuyun).\n\n" +
-      "Diqqət: eslint.config.* (və ya yuxarıdakı side-file) və .prettierrc.js hər dəfə\n" +
-      "şablonun ən son versiyası ilə üzərinə yazılır (commit-msg/pre-commit hook-ları kimi)\n" +
-      "— özünüzə uyğun etdiyiniz dəyişiklikləri qorumaq istəsəniz, əvvəlcə fərqli adla\n" +
-      "backup götürün.\n",
+      "Diqqət: eslint.config.mjs, " +
+      RULES_FILE +
+      " və .prettierrc.js hər dəfə\n" +
+      "şablonun ən son versiyası ilə üzərinə yazılır (commit-msg/pre-commit hook-ları kimi) —\n" +
+      "manual dəyişiklik lazım deyil, amma özünüzə uyğun etdiyiniz dəyişiklikləri qorumaq\n" +
+      "istəsəniz, əvvəlcə fərqli adla backup götürün.\n" +
+      (hasNext
+        ? "\nNext.js aşkarlandı → next/core-web-vitals və next/typescript qaydaları da\n" +
+          "avtomatik daxil edildi.\n"
+        : ""),
   );
-  ensureDevDeps(ESLINT_REACT_DEV_DEPS);
-  if (flatConfigAlreadyExists) {
+
+  const extraDeps = hasNext && !deps["eslint-config-next"] ? ["eslint-config-next"] : [];
+  ensureDevDeps(ESLINT_REACT_DEV_DEPS.concat(extraDeps));
+
+  if (fs.existsSync(path.join(cwd, ".eslintrc.js"))) {
     console.log(
-      `\nUnutmayın: ${FLAT_CONFIG_SIDE_FILE} avtomatik import olunmur — onu öz\n` +
-        "eslint.config.* faylınıza əlavə etməsəniz, bu qaydalar heç vaxt işə düşməyəcək\n" +
-        "(yuxarıdakı nümunəyə baxın). Həmçinin, əgər layihənizdə hələ də köhnə .eslintrc.js\n" +
-        "varsa, onu silin — flat config varkən ESLint onu oxumur, üstəlik özü də indi\n" +
-        "adi .js fayl kimi lint xətaları törədə bilər.\n",
+      "\nDiqqət: layihənizdə hələ də köhnə .eslintrc.js var — silin. Flat config varkən\n" +
+        "ESLint onu oxumur, üstəlik özü də indi adi .js fayl kimi lint xətaları törədə bilər.\n",
     );
   }
 }
