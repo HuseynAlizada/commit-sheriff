@@ -1,8 +1,16 @@
 {
   "name": "commit-sheriff",
-  "version": "1.7.3",
+  "version": "1.7.4",
   "description": "Shared husky commit-msg / pre-commit hooks enforcing ticket-based commit messages and branch naming",
   "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HuseynAlizada/commit-sheriff.git"
+  },
+  "homepage": "https://github.com/HuseynAlizada/commit-sheriff#readme",
+  "bugs": {
+    "url": "https://github.com/HuseynAlizada/commit-sheriff/issues"
+  },
   "bin": {
     "commit-sheriff": "bin/commit-sheriff.js"
   },
