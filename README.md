@@ -310,16 +310,22 @@ It installs whatever it needs automatically (via `npm install --save-dev`, same 
 `lint-staged`/`eslint`/`prettier`), skipping anything already present:
 
 ```bash
-npm install --save-dev eslint@^9 typescript @typescript-eslint/parser \
-  @typescript-eslint/eslint-plugin @eslint/js @eslint/eslintrc eslint-plugin-sonarjs \
+npm install --save-dev eslint@^9 typescript@^5 @typescript-eslint/parser \
+  @typescript-eslint/eslint-plugin @eslint/js@^9 @eslint/eslintrc eslint-plugin-sonarjs \
   eslint-plugin-import eslint-plugin-prettier eslint-config-prettier eslint-plugin-react \
   eslint-plugin-react-hooks eslint-plugin-jsx-a11y eslint-plugin-testing-library \
   @vitest/eslint-plugin eslint-plugin-jest prettier
 ```
 
-`eslint` is pinned to `^9` on purpose rather than left to resolve to whatever `latest` is — plugins
-like `eslint-plugin-react` have historically taken a while to support each new ESLint major, so an
-unpinned install can grab a version the rest of the toolchain doesn't work with yet.
+`eslint`, `@eslint/js`, and `typescript` are pinned on purpose rather than left to resolve to
+whatever `latest` is — the plugin ecosystem here regularly lags behind both. Two concrete
+conflicts this has already caused: `@eslint/js`'s own `latest` declares a hard peer on
+`eslint@^10`, so leaving it unpinned next to `eslint@^9` is an instant `ERESOLVE`; and
+`@typescript-eslint/eslint-plugin` currently only supports `typescript` up to `<6.1.0`, so an
+unpinned `typescript` install (which resolves to its own `latest`, e.g. `7.x`) crashes plugin
+loading with "typescript-eslint does not support TS 7.0". Pinning `eslint`/`@eslint/js` together
+to `^9` and `typescript` to `^5` keeps the whole toolchain on versions that are actually
+compatible with each other today.
 
 If the install fails (offline, registry issue, etc.), it prints this exact command so you can run
 it yourself.

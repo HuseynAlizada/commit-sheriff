@@ -202,11 +202,19 @@ function init() {
 const ESLINT_REACT_DEV_DEPS = [
   // Pinned (not left to resolve to "latest") — see the comment on the eslint@^9 install in
   // mergeConfig() for why: the plugin ecosystem here regularly lags behind ESLint's newest major.
+  // @eslint/js in particular is versioned in lockstep with ESLint core and its `latest` (10.x)
+  // declares a hard peerDependency on eslint@^10 — installing it unpinned alongside eslint@^9
+  // produces an immediate ERESOLVE conflict, which is exactly what this pin prevents.
   "eslint@^9",
-  "typescript",
+  // Same lag problem, different package: @typescript-eslint/eslint-plugin@8.65.0 declares
+  // `typescript: ">=4.8.4 <6.1.0"` as a peer, but unpinned "typescript" resolves to npm's
+  // "latest" (7.x once TypeScript ships a 7.0) — that's outside the supported range and
+  // crashes plugin loading with "typescript-eslint does not support TS 7.0". Pinning to the
+  // latest 5.x line keeps us inside the range the plugin actually supports today.
+  "typescript@^5",
   "@typescript-eslint/parser",
   "@typescript-eslint/eslint-plugin",
-  "@eslint/js",
+  "@eslint/js@^9",
   "@eslint/eslintrc",
   "eslint-plugin-sonarjs",
   "eslint-plugin-import",
