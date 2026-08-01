@@ -251,19 +251,19 @@ The default config added by `init` (only if you don't already have one):
 ```json
 {
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": ["eslint --fix --max-warnings=0", "prettier --write"],
+    "*.{js,jsx,ts,tsx}": ["eslint --fix", "prettier --write"],
     "*.{json,md,css,scss,html}": ["prettier --write"]
   }
 }
 ```
 
-`--max-warnings=0` is there on purpose: ESLint only fails (non-zero exit) on errors by default, so
-a rule set to `"warn"` (e.g. many "recommended" configs' default severity for unused imports) would
-otherwise print in the terminal but still let the commit through looking clean.
+Warnings are printed but never block the commit — only actual errors (ESLint's non-zero exit) do.
+That's the default ESLint behavior (`--fix` alone exits 0 on warning-only results), so a rule set to
+`"warn"` (e.g. an unused import under some "recommended" configs) shows up in the terminal as a
+heads-up but doesn't stop you from committing.
 
-Adjust freely — `commit-sheriff` doesn't overwrite it once present. That also means this default
-only lands on **new** setups; if your project already has a `lint-staged` block from before this
-change, add `--max-warnings=0` to it by hand to get the same behavior.
+Adjust freely — `commit-sheriff` doesn't overwrite it once present. If you want warnings to block
+the commit too, add `--max-warnings=0` to the `eslint --fix` command by hand.
 
 ## Advanced: ESLint module-boundary template (TypeScript/React)
 

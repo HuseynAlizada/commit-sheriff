@@ -38,10 +38,9 @@ const DEFAULT_COMMIT_GUARD = {
 };
 
 const DEFAULT_LINT_STAGED = {
-  // --max-warnings=0: without this, ESLint only fails (non-zero exit) on errors — a warning
-  // (e.g. many "recommended" configs' default severity for unused imports) prints in the
-  // terminal but still lets `eslint --fix` exit 0, so the commit goes through looking clean.
-  "*.{js,jsx,ts,tsx}": ["eslint --fix --max-warnings=0", "prettier --write"],
+  // No --max-warnings=0 here on purpose: warnings should be visible (ESLint prints them to the
+  // terminal either way) but must NOT block the commit — only actual errors (non-zero exit) do.
+  "*.{js,jsx,ts,tsx}": ["eslint --fix", "prettier --write"],
   "*.{json,md,css,scss,html}": ["prettier --write"],
 };
 

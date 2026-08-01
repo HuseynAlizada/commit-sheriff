@@ -77,7 +77,11 @@ HAS_LINT_CONFIG=$(node -e "
 " 2>/dev/null)
 if [ "$HAS_LINT_CONFIG" = "1" ]; then
     if node -e "require.resolve('lint-staged')" 2>/dev/null; then
-        npx lint-staged || exit 1
+        # --verbose: lint-staged only prints a task's output when it *fails* by default, so a
+        # warning-only ESLint result (exit 0, commit still allowed through) would otherwise show
+        # nothing at all. --verbose keeps it printing on success too, so warnings stay visible as
+        # a heads-up without blocking the commit.
+        npx lint-staged --verbose || exit 1
     else
         echo ""
         echo "  package.json-da 'lint-staged' konfiqurasiyası var, amma paketin özü"
