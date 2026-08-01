@@ -84,10 +84,10 @@ if [ "$HAS_LINT_CONFIG" = "1" ]; then
         npx lint-staged --verbose || exit 1
     else
         echo ""
-        echo "  package.json-da 'lint-staged' konfiqurasiyası var, amma paketin özü"
-        echo "  node_modules-də tapılmadı — lint/format yoxlanışı keçirilə bilmədi."
+        echo "  package.json has a 'lint-staged' configuration, but the package itself"
+        echo "  was not found in node_modules — the lint/format check could not run."
         echo ""
-        echo "  Düzəltmək üçün:"
+        echo "  To fix:"
         echo "    npm install --save-dev lint-staged"
         echo ""
         exit 1

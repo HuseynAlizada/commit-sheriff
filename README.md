@@ -276,40 +276,25 @@ npx commit-sheriff add-eslint-react
 ```
 
 This ships as a **flat config** (`eslint.config.*`, ESLint 9+ format), not the legacy
-`.eslintrc.js` format — see [why](#why-flat-config) below. It always writes two files, no manual
-merge step required, ever:
+`.eslintrc.js` format — see [why](#why-flat-config) below.
 
-- `eslint.config.commit-sheriff.mjs` — the actual ruleset (module-boundary rules + all the
-  recommended plugins: TypeScript, React, hooks, a11y, sonarjs, import, testing-library, vitest,
-  jest, prettier).
-- `eslint.config.mjs` — the entry point ESLint actually reads, generated fresh every run to import
-  the file above. **If you already had an `eslint.config.mjs` (e.g. Next.js's own
-  `create-next-app`-generated one), it is fully overwritten** — not merged, not left alone. If
-  `next` is detected in your `dependencies`, the generated entry point folds in Next's own ESLint
-  rules automatically so you don't lose Next-specific linting; `eslint-config-next` is
-  auto-installed too if it's missing. Any other hand-written customizations in your previous
-  `eslint.config.mjs` are not preserved — back it up under a different name first if you need them.
+It writes/refreshes three files every run, **always overwriting** whatever was there before (same
+as the `commit-msg`/`pre-commit` hooks) — no manual merge step, ever. If you've hand-edited any of
+these, back them up under a different name first:
 
-  `eslint-config-next` changed shape between major versions, so the generated entry point checks
-  the actually-installed version and picks the matching pattern automatically:
-  - **v16+** (current): ships a native flat-config array
-    (`import nextCoreWebVitals from "eslint-config-next/core-web-vitals"`, spread directly). Mixing
-    this with our own module-boundary plugins (which resolve the same plugin _names_ — `react`,
-    `jsx-a11y`, `import`, etc. — through a separate loader) would otherwise throw `Cannot redefine
-plugin ...`; the generated config strips those redundant re-registrations automatically so both
-    rule sets apply cleanly.
-  - **v15 and earlier**: still ships the legacy eslintrc-style object, so the generated config uses
-    `FlatCompat.extends("next/core-web-vitals", "next/typescript")` instead — the same bridge
-    `create-next-app@15` itself generates.
+| File                               | What it is                                                                                                                                                                                                                                                 |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `eslint.config.commit-sheriff.mjs` | The actual ruleset: module-boundary rules + all the recommended plugins (TypeScript, React, hooks, a11y, sonarjs, import, testing-library, vitest, jest, prettier).                                                                                        |
+| `eslint.config.mjs`                | The entry point ESLint actually reads. Just imports the file above — or, if `next` is detected in your dependencies, also folds in Next.js's own ESLint rules so you don't lose Next-specific linting (`eslint-config-next` is auto-installed if missing). |
+| `.prettierrc.js`                   | Matching Prettier config for the same ruleset.                                                                                                                                                                                                             |
 
-  (An earlier version of this tool hardcoded the v15-style pattern unconditionally, which crashed
-  with `TypeError: Converting circular structure to JSON` on projects using `eslint-config-next@16+`
-  — fixed by detecting the installed version instead of assuming one.)
+If your project already had its own `eslint.config.mjs` (e.g. Next.js's own
+`create-next-app`-generated one), it gets replaced by the one above, not merged with it.
 
-`.prettierrc.js` is written/refreshed the same way — **always overwritten** with the latest
-template (same behavior as the `commit-msg`/`pre-commit` hooks). This trade-off is intentional:
-zero manual steps for the common case, at the cost of not preserving bespoke prior ESLint/Prettier
-setups.
+Next.js support is version-aware: `eslint-config-next` changed its internal shape between major
+versions (a native flat-config array from v16 on, the older eslintrc-style object before that), and
+the generated `eslint.config.mjs` detects which one is actually installed and uses the matching
+pattern automatically — you don't need to think about this at all, it's handled for you.
 
 The module list for the boundary rule isn't hardcoded — it's read straight from the `modules`
 array in your root `.commitsheriffrc.json` (the same list the commit-msg/branch-name hooks use
@@ -348,16 +333,14 @@ it yourself.
 #### Why flat config?
 
 ESLint 9+ looks for `eslint.config.*` first and, if one is found, **ignores `.eslintrc.js`
-entirely** — there's no fallback. Since frameworks like Next.js already scaffold their own
-`eslint.config.mjs`, a legacy-only `.eslintrc.js` template would sit right next to it and never
-actually run (this was a real bug: an unused `useState` import went completely unflagged because
-the module-boundary config was silently dead). The flat config here uses `FlatCompat` (the same
-official migration helper Next.js's own generated config uses internally) so the exact same rule
-set works natively under ESLint 9+, whether or not the project already had its own flat config.
+entirely** — there's no fallback. A legacy-only `.eslintrc.js` template sitting next to a
+framework-generated `eslint.config.mjs` (Next.js scaffolds one by default) would simply never run —
+this used to be a real bug here, where an unused import went completely unflagged because the
+module-boundary rules were silently dead. Flat config avoids that trap entirely.
 
 A legacy `.eslintrc.js` version of this template (`eslintrc.module-boundaries.js`) still ships
-inside the package for reference/manual use on pure ESLint 8 projects with no flat config support
-at all, but the CLI no longer writes it by default.
+inside the package for reference/manual use on pure ESLint 8 projects with no flat config support,
+but the CLI no longer writes it by default.
 
 ## Examples
 

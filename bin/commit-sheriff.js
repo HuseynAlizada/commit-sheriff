@@ -49,7 +49,7 @@ const CONFIG_FILE_NAME = ".commitsheriffrc.json";
 function readPackageJson() {
   const pkgPath = path.join(cwd, "package.json");
   if (!fs.existsSync(pkgPath)) {
-    console.error("  package.json tapılmadı. Əvvəlcə `npm init` işlədin.");
+    console.error("  package.json not found. Run `npm init` first.");
     process.exit(1);
   }
   return { pkgPath, pkg: JSON.parse(fs.readFileSync(pkgPath, "utf8")) };
@@ -59,7 +59,7 @@ function ensureHusky() {
   const huskyDir = path.join(cwd, ".husky");
   const shimPath = path.join(huskyDir, "_", "husky.sh");
   if (!fs.existsSync(shimPath)) {
-    console.log("→ husky quraşdırılır (npx husky init)...");
+    console.log("→ setting up husky (npx husky init)...");
     execSync("npx husky init", { cwd, stdio: "inherit" });
   }
 }
@@ -70,7 +70,7 @@ function copyHook(name) {
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.copyFileSync(src, dest);
   fs.chmodSync(dest, 0o755);
-  console.log(`✔ .husky/${name} yazıldı`);
+  console.log(`✔ .husky/${name} written`);
 }
 
 function ensureConfigFile() {
@@ -78,19 +78,19 @@ function ensureConfigFile() {
   const { pkg } = readPackageJson();
 
   if (fs.existsSync(configPath)) {
-    console.log(`• ${CONFIG_FILE_NAME} artıq var, toxunulmadı`);
+    console.log(`• ${CONFIG_FILE_NAME} already exists, left untouched`);
     return;
   }
 
   if (pkg.commitGuard) {
     console.log(
-      `• package.json-da köhnə tərzli 'commitGuard' bloku tapıldı — ${CONFIG_FILE_NAME} yaradılmadı, köhnə konfiqurasiya işləməyə davam edir.`,
+      `• Found a legacy-style 'commitGuard' block in package.json — ${CONFIG_FILE_NAME} not created, the old configuration keeps working.`,
     );
     return;
   }
 
   fs.writeFileSync(configPath, JSON.stringify(DEFAULT_COMMIT_GUARD, null, 2) + "\n");
-  console.log(`✔ ${CONFIG_FILE_NAME} yazıldı`);
+  console.log(`✔ ${CONFIG_FILE_NAME} written`);
 }
 
 // Installs whatever in `packages` isn't already a listed dependency/devDependency, so the hooks
@@ -111,10 +111,10 @@ function ensureDevDeps(packages) {
   const deps = Object.assign({}, pkg.dependencies, pkg.devDependencies);
   const missing = packages.filter((spec) => !deps[packageNameOf(spec)]);
   if (!missing.length) {
-    console.log("• Lazımi devDependencies artıq quraşdırılıb, toxunulmadı");
+    console.log("• Required devDependencies are already installed, nothing to do");
     return;
   }
-  console.log(`→ Quraşdırılır: ${missing.join(" ")}`);
+  console.log(`→ Installing: ${missing.join(" ")}`);
   try {
     // --legacy-peer-deps: some ESLint plugins lag behind the newest ESLint major in their
     // declared peerDependencies (e.g. eslint-plugin-import still capping at ^9 while npm already
@@ -124,10 +124,10 @@ function ensureDevDeps(packages) {
       cwd,
       stdio: "inherit",
     });
-    console.log("✔ devDependencies quraşdırıldı");
+    console.log("✔ devDependencies installed");
   } catch {
     console.log(
-      "\n  Avtomatik quraşdırma alınmadı (şəbəkə/npm xətası ola bilər) — özünüz işlədin:\n" +
+      "\n  Automatic install failed (could be a network/npm error) — run it yourself:\n" +
         `    npm install --save-dev ${missing.join(" ")}\n`,
     );
   }
@@ -142,9 +142,9 @@ function mergeConfig() {
   if (!pkg["lint-staged"]) {
     pkg["lint-staged"] = DEFAULT_LINT_STAGED;
     changed = true;
-    console.log("✔ package.json → lint-staged konfiqurasiyası əlavə olundu");
+    console.log("✔ package.json → lint-staged configuration added");
   } else {
-    console.log("• package.json-da lint-staged artıq var, toxunulmadı");
+    console.log("• package.json already has a lint-staged block, left untouched");
   }
 
   if (!pkg.scripts) pkg.scripts = {};
@@ -184,18 +184,16 @@ function init() {
 
   if (isReactTypescriptProject()) {
     console.log(
-      "\n• react + typescript aşkarlandı → TS/React modul-sərhəd ESLint şablonu da əlavə olunur:",
+      "\n• react + typescript detected → also adding the TS/React module-boundary ESLint template:",
     );
     addEslintReact();
   } else {
     console.log(
-      "\n(Layihə TS/React kimi aşkarlanmadı — istəsəniz `npx commit-sheriff add-eslint-react` ilə əlavə edə bilərsiniz.)",
+      "\n(Project not detected as TS/React — you can add it manually with `npx commit-sheriff add-eslint-react` if needed.)",
     );
   }
 
-  console.log(
-    `\nHazırdır. ${CONFIG_FILE_NAME} faylında 'project' və lazım olsa 'modules' dəyərlərini tənzimləyin.\n`,
-  );
+  console.log(`\nDone. Adjust 'project' and, if needed, 'modules' in ${CONFIG_FILE_NAME}.\n`);
 }
 
 const ESLINT_REACT_DEV_DEPS = [
@@ -240,7 +238,7 @@ function copyTemplateOverwrite(templateName, destName) {
   const dest = path.join(cwd, destName);
   const existed = fs.existsSync(dest);
   fs.copyFileSync(src, dest);
-  console.log(existed ? `✔ ${destName} yeniləndi (üzərinə yazıldı)` : `✔ ${destName} yazıldı`);
+  console.log(existed ? `✔ ${destName} updated (overwritten)` : `✔ ${destName} written`);
   return dest;
 }
 
@@ -248,7 +246,7 @@ function writeFileOverwrite(destName, content) {
   const dest = path.join(cwd, destName);
   const existed = fs.existsSync(dest);
   fs.writeFileSync(dest, content);
-  console.log(existed ? `✔ ${destName} yeniləndi (üzərinə yazıldı)` : `✔ ${destName} yazıldı`);
+  console.log(existed ? `✔ ${destName} updated (overwritten)` : `✔ ${destName} written`);
   return dest;
 }
 
@@ -348,25 +346,26 @@ function addEslintReact() {
   copyTemplateOverwrite("prettier.module-boundaries.js", ".prettierrc.js");
 
   console.log(
-    "\nBu şablon TypeScript/React + modul-sərhəd (module-boundary) qaydaları üçündür.\n" +
-      `Modul siyahısı ${CONFIG_FILE_NAME}.modules-dən avtomatik oxunur (boşdursa nümunə\n` +
-      "siyahı istifadə olunur — şablon faylı içindəki şərhi oxuyun).\n\n" +
-      "Diqqət: eslint.config.mjs, " +
+    "\nThis template is for TypeScript/React + module-boundary rules.\n" +
+      `The module list is read automatically from ${CONFIG_FILE_NAME}'s "modules" (falls back\n` +
+      "to an illustrative default if empty — read the comment inside the template file).\n\n" +
+      "Note: eslint.config.mjs, " +
       RULES_FILE +
-      " və .prettierrc.js hər dəfə\n" +
-      "şablonun ən son versiyası ilə üzərinə yazılır (commit-msg/pre-commit hook-ları kimi) —\n" +
-      "manual dəyişiklik lazım deyil, amma özünüzə uyğun etdiyiniz dəyişiklikləri qorumaq\n" +
-      "istəsəniz, əvvəlcə fərqli adla backup götürün.\n" +
+      ", and .prettierrc.js are overwritten\n" +
+      "with the latest template every run (same as the commit-msg/pre-commit hooks) — no manual\n" +
+      "merge step needed, but if you want to keep your own customizations, back them up under a\n" +
+      "different name first.\n" +
       (hasNext
-        ? "\nNext.js aşkarlandı → next/core-web-vitals və next/typescript qaydaları da\n" +
-          "avtomatik daxil edildi.\n"
+        ? "\nNext.js detected → next/core-web-vitals and next/typescript rules are folded in\n" +
+          "automatically too.\n"
         : ""),
   );
 
   if (fs.existsSync(path.join(cwd, ".eslintrc.js"))) {
     console.log(
-      "\nDiqqət: layihənizdə hələ də köhnə .eslintrc.js var — silin. Flat config varkən\n" +
-        "ESLint onu oxumur, üstəlik özü də indi adi .js fayl kimi lint xətaları törədə bilər.\n",
+      "\nNote: your project still has a legacy .eslintrc.js — delete it. With a flat config\n" +
+        "present, ESLint never reads it, and it can itself start producing lint errors as a\n" +
+        "plain .js file.\n",
     );
   }
 }
@@ -376,9 +375,9 @@ if (command === "init") {
 } else if (command === "add-eslint-react") {
   addEslintReact();
 } else {
-  console.log("İstifadə: npx commit-sheriff init");
+  console.log("Usage: npx commit-sheriff init");
   console.log(
-    "        : npx commit-sheriff add-eslint-react   (opsional, TS/React modul-sərhəd ESLint şablonu)",
+    "     : npx commit-sheriff add-eslint-react   (optional, TS/React module-boundary ESLint template)",
   );
   process.exit(command ? 1 : 0);
 }
