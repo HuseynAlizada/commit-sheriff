@@ -253,6 +253,25 @@ function writeFileOverwrite(destName, content) {
   return dest;
 }
 
+// eslint-config-next changed shape across majors: up through v15 it ships an eslintrc-style
+// object (`module.exports = { extends: [...] }`) meant to be pulled in via FlatCompat's legacy
+// `compat.extends("next/core-web-vitals", "next/typescript")` bridge (exactly what
+// `create-next-app` itself generates for v15 projects). From v16 on it ships a native flat-config
+// array as the default export of `eslint-config-next/core-web-vitals` / `/typescript` instead —
+// running the *old* FlatCompat-string pattern against a v16 install crashes with
+// "TypeError: Converting circular structure to JSON" deep inside `@eslint/eslintrc`'s config
+// validator (confirmed by reproducing it in a scratch project — the crash reproduces with only
+// Next's own extends, no module-boundary rules involved at all). `create-next-app@latest` itself
+// already generates the new native-import form for v16, so we mirror that here rather than the
+// older FlatCompat form once eslint-config-next resolves to 16+.
+function installedVersion(pkgName) {
+  try {
+    return require(path.join(cwd, "node_modules", pkgName, "package.json")).version;
+  } catch {
+    return null;
+  }
+}
+
 function buildEslintEntryConfig(hasNext) {
   if (!hasNext) {
     return (
@@ -260,9 +279,44 @@ function buildEslintEntryConfig(hasNext) {
       `export default [...moduleBoundaries];\n`
     );
   }
-  // Next.js scaffolds its own eslint.config.mjs with `next/core-web-vitals`/`next/typescript` —
-  // those are folded in here (via the same FlatCompat pattern Next's own generated config uses)
-  // so overwriting the file doesn't silently drop Next-specific linting.
+
+  const version = installedVersion("eslint-config-next");
+  const major = version ? parseInt(version.split(".")[0], 10) : null;
+  // Default to the modern (16+) form when the version can't be determined (e.g. install failed
+  // offline) — that's what any newly-scaffolded Next project will have going forward.
+  const useNativeFlatExport = major === null || major >= 16;
+
+  if (useNativeFlatExport) {
+    // eslint-config-next's native flat array already registers plugins like "react",
+    // "react-hooks", "import", "jsx-a11y" and "@typescript-eslint". Our own module-boundary
+    // template is built through @eslint/eslintrc's FlatCompat, which independently resolves
+    // those same plugin *names* into separate object instances — even though they load the same
+    // underlying package, ESLint's flat config throws "Cannot redefine plugin ..." when a plugin
+    // name is registered twice with two different object references (confirmed by reproducing it
+    // in a scratch Next 16 project). Only one registration per plugin name is actually needed, so
+    // any config entry from our own template that re-declares a plugin Next.js already registered
+    // has that redundant "plugins" key stripped below — its "rules" keep working against the
+    // plugin instance Next.js already loaded.
+    return (
+      `import nextCoreWebVitals from "eslint-config-next/core-web-vitals";\n` +
+      `import nextTypescript from "eslint-config-next/typescript";\n` +
+      `import moduleBoundaries from "./${RULES_FILE}";\n\n` +
+      `const nextConfigs = [...nextCoreWebVitals, ...nextTypescript];\n` +
+      `const pluginsNextAlreadyRegisters = new Set(\n` +
+      `  nextConfigs.flatMap((entry) => (entry.plugins ? Object.keys(entry.plugins) : [])),\n` +
+      `);\n` +
+      `const dedupedModuleBoundaries = moduleBoundaries.map((entry) => {\n` +
+      `  if (!entry.plugins) return entry;\n` +
+      `  const ownPlugins = Object.fromEntries(\n` +
+      `    Object.entries(entry.plugins).filter(([name]) => !pluginsNextAlreadyRegisters.has(name)),\n` +
+      `  );\n` +
+      `  const { plugins, ...rest } = entry;\n` +
+      `  return Object.keys(ownPlugins).length ? { ...rest, plugins: ownPlugins } : rest;\n` +
+      `});\n\n` +
+      `export default [...nextConfigs, ...dedupedModuleBoundaries];\n`
+    );
+  }
+
   return (
     `import { fileURLToPath } from "node:url";\n` +
     `import path from "node:path";\n` +
@@ -284,6 +338,13 @@ function addEslintReact() {
   const hasNext = Boolean(deps.next);
 
   copyTemplateOverwrite("eslint.config.module-boundaries.mjs", RULES_FILE);
+
+  // eslint-config-next must actually be installed (and its version readable) *before* generating
+  // the entry config below, so the version check above sees real, resolved data instead of "not
+  // installed yet".
+  const extraDeps = hasNext && !deps["eslint-config-next"] ? ["eslint-config-next"] : [];
+  ensureDevDeps(ESLINT_REACT_DEV_DEPS.concat(extraDeps));
+
   writeFileOverwrite("eslint.config.mjs", buildEslintEntryConfig(hasNext));
   copyTemplateOverwrite("prettier.module-boundaries.js", ".prettierrc.js");
 
@@ -302,9 +363,6 @@ function addEslintReact() {
           "avtomatik daxil edildi.\n"
         : ""),
   );
-
-  const extraDeps = hasNext && !deps["eslint-config-next"] ? ["eslint-config-next"] : [];
-  ensureDevDeps(ESLINT_REACT_DEV_DEPS.concat(extraDeps));
 
   if (fs.existsSync(path.join(cwd, ".eslintrc.js"))) {
     console.log(

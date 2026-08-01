@@ -285,11 +285,26 @@ merge step required, ever:
 - `eslint.config.mjs` — the entry point ESLint actually reads, generated fresh every run to import
   the file above. **If you already had an `eslint.config.mjs` (e.g. Next.js's own
   `create-next-app`-generated one), it is fully overwritten** — not merged, not left alone. If
-  `next` is detected in your `dependencies`, the generated entry point folds in
-  `next/core-web-vitals`/`next/typescript` automatically (via the same `FlatCompat` pattern Next's
-  own generated config uses) so you don't lose Next-specific linting; `eslint-config-next` is
+  `next` is detected in your `dependencies`, the generated entry point folds in Next's own ESLint
+  rules automatically so you don't lose Next-specific linting; `eslint-config-next` is
   auto-installed too if it's missing. Any other hand-written customizations in your previous
   `eslint.config.mjs` are not preserved — back it up under a different name first if you need them.
+
+  `eslint-config-next` changed shape between major versions, so the generated entry point checks
+  the actually-installed version and picks the matching pattern automatically:
+  - **v16+** (current): ships a native flat-config array
+    (`import nextCoreWebVitals from "eslint-config-next/core-web-vitals"`, spread directly). Mixing
+    this with our own module-boundary plugins (which resolve the same plugin _names_ — `react`,
+    `jsx-a11y`, `import`, etc. — through a separate loader) would otherwise throw `Cannot redefine
+plugin ...`; the generated config strips those redundant re-registrations automatically so both
+    rule sets apply cleanly.
+  - **v15 and earlier**: still ships the legacy eslintrc-style object, so the generated config uses
+    `FlatCompat.extends("next/core-web-vitals", "next/typescript")` instead — the same bridge
+    `create-next-app@15` itself generates.
+
+  (An earlier version of this tool hardcoded the v15-style pattern unconditionally, which crashed
+  with `TypeError: Converting circular structure to JSON` on projects using `eslint-config-next@16+`
+  — fixed by detecting the installed version instead of assuming one.)
 
 `.prettierrc.js` is written/refreshed the same way — **always overwritten** with the latest
 template (same behavior as the `commit-msg`/`pre-commit` hooks). This trade-off is intentional:
