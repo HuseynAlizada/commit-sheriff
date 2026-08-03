@@ -20,14 +20,16 @@ eval "$(node -e "
     try { cfg = (JSON.parse(fs.readFileSync('package.json', 'utf8')).commitGuard) || {}; } catch (e2) {}
   }
   const useModules = cfg.useModules !== undefined ? cfg.useModules : true;
+  const project = cfg.project || 'PROJ';
   const modules = (cfg.modules && cfg.modules.length ? cfg.modules.join('|') : '[A-Z]+');
   const types = (cfg.types || ['feat','fix','docs','style','refactor','test','chore','perf','ci','build','revert']).join('|');
   console.log('USE_MODULES=' + useModules);
+  console.log('PROJECT=' + project);
   console.log('MODULES=\"' + modules + '\"');
   console.log('TYPES=\"' + types + '\"');
 " 2>/dev/null)"
 
-if [ -z "$TYPES" ]; then
+if [ -z "$PROJECT" ] || [ -z "$TYPES" ]; then
     echo ""
     echo "  Could not load commitGuard config — is Node.js installed and is this running from the repo root?"
     echo ""
@@ -38,11 +40,11 @@ fi
 if [ "$USE_MODULES" = "true" ]; then
     # Format : (TICKET) [MODULE] type(scope): message
     # Example: (PROJ-1077) [SET] feature(organization structure): implement organization management
-    valid_commit_regex="^\([A-Z]+-[0-9]+\) \[($MODULES)\] ($TYPES)(\([^)]+\))?: .+"
+    valid_commit_regex="^\($PROJECT-[0-9]+\) \[($MODULES)\] ($TYPES)(\([^)]+\))?: .+"
 else
     # Format : (TICKET) type(scope): message
     # Example: (PROJ-1077) feature(organization structure): implement organization management
-    valid_commit_regex="^\([A-Z]+-[0-9]+\) ($TYPES)(\([^)]+\))?: .+"
+    valid_commit_regex="^\($PROJECT-[0-9]+\) ($TYPES)(\([^)]+\))?: .+"
 fi
 
 if [[ ! $commit_msg =~ $valid_commit_regex ]]; then
@@ -51,15 +53,16 @@ if [[ ! $commit_msg =~ $valid_commit_regex ]]; then
     echo ""
     if [ "$USE_MODULES" = "true" ]; then
         echo "  Required format : (TICKET) [MODULE] type(scope): message"
-        echo "  Example         : (PROJ-1077) [SET] feature(organization structure): implement organization management"
         echo "  Example         : (PROJ-1191) [SET] fix(register): reset registration session on menu reopen"
+        echo "  Example         : (PROJ-11) feat(register): reset registration session on menu reopen"
+
     else
         echo "  Required format : (TICKET) type(scope): message"
-        echo "  Example         : (PROJ-1077) feature(organization structure): implement organization management"
         echo "  Example         : (PROJ-1191) fix(register): reset registration session on menu reopen"
+        echo "  Example         : (PROJ-11) feat(register): reset registration session on menu reopen"
     fi
     echo ""
-    echo "  Ticket  : (PROJECT-NUMBER), e.g. (PROJ-1191)"
+    echo "  Ticket  : ($PROJECT-NUMBER), e.g. ($PROJECT-1191)"
     [ "$USE_MODULES" = "true" ] && echo "  Modules : $(echo $MODULES | tr '|' ' ')"
     echo "  Types   : $(echo $TYPES | tr '|' ' ')"
     echo "  Scope   : optional — e.g. fix(register): ..."
