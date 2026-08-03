@@ -169,7 +169,7 @@ or, when `useModules: true`:
 ```
 bugfix/PROJ-1093-fix-validation
 improvement/PROJ-609-correct-husky-pre-commit-validation
-improvement/PRO-PROJ-609-correct-husky-pre-commit-validation   # only with useModules: true
+improvement/MOD-PROJ-609-correct-husky-pre-commit-validation   # only with useModules: true
 ```
 
 The check is skipped on a detached `HEAD` (e.g. mid-rebase, mid-cherry-pick), so it never blocks those operations.

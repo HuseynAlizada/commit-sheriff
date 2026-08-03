@@ -32,7 +32,7 @@ elif [ -z "$PROJECT" ]; then
 else
     if [ "$USE_MODULES" = "true" ]; then
         # Format : <type>/<MODULE>-<PROJECT>-<NUMBER>-<description>
-        # Example: improvement/PRO-PROJ-609-correct-husky-pre-commit-validation
+        # Example: improvement/MOD-PROJ-609-correct-husky-pre-commit-validation
         valid_branch_regex="^($BRANCH_TYPES)\/($MODULES)-$PROJECT-[0-9]+-[a-z][a-z0-9-]*$"
     else
         # Format : <type>/<PROJECT>-<NUMBER>-<description>
@@ -46,7 +46,7 @@ else
         echo ""
         if [ "$USE_MODULES" = "true" ]; then
             echo "  Required format : <type>/<MODULE>-<PROJECT>-<NUMBER>-<description>"
-            echo "  Example         : improvement/PRO-PROJ-609-correct-husky-pre-commit-validation"
+            echo "  Example         : improvement/MOD-PROJ-609-correct-husky-pre-commit-validation"
         else
             echo "  Required format : <type>/<PROJECT>-<NUMBER>-<description>"
             echo "  Example         : bugfix/PROJ-1093-fix-meeting-validation"
