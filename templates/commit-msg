@@ -39,11 +39,11 @@ fi
 # ── Commit message format ───────────────────────────────────────────────────
 if [ "$USE_MODULES" = "true" ]; then
     # Format : (TICKET) [MODULE] type(scope): message
-    # Example: (PROJ-1077) [SET] feature(organization structure): implement organization management
+    # Example: (PROJ-1077) [SET] feat(organization structure): implement organization management
     valid_commit_regex="^\($PROJECT-[0-9]+\) \[($MODULES)\] ($TYPES)(\([^)]+\))?: .+"
 else
     # Format : (TICKET) type(scope): message
-    # Example: (PROJ-1077) feature(organization structure): implement organization management
+    # Example: (PROJ-1077) feat(organization structure): implement organization management
     valid_commit_regex="^\($PROJECT-[0-9]+\) ($TYPES)(\([^)]+\))?: .+"
 fi
 
@@ -53,11 +53,11 @@ if [[ ! $commit_msg =~ $valid_commit_regex ]]; then
     echo ""
     if [ "$USE_MODULES" = "true" ]; then
         echo "  Required format : (TICKET) [MODULE] type(scope): message"
-        echo "  Example         : (PROJ-1077) [SET] feature(organization structure): implement organization management"
+        echo "  Example         : (PROJ-1077) [SET] feat(organization structure): implement organization management"
         echo "  Example         : (PROJ-1191) [SET] fix(register): reset registration session on menu reopen"
     else
         echo "  Required format : (TICKET) type(scope): message"
-        echo "  Example         : (PROJ-1077) feature(organization structure): implement organization management"
+        echo "  Example         : (PROJ-1077) feat(organization structure): implement organization management"
         echo "  Example         : (PROJ-1191) fix(register): reset registration session on menu reopen"
     fi
     echo ""
