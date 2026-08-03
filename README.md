@@ -7,7 +7,14 @@ Shared [Husky](https://typicode.github.io/husky/) git hooks for any project — 
 ```bash
 npm install --save-dev commit-sheriff husky
 npx commit-sheriff init
-npx commit-sheriff add-eslint-react   # optional — only needed if init didn't auto-detect react+typescript
+```
+
+`init` only sets up Husky, the git hooks, and `.commitsheriffrc.json` — it never installs
+ESLint/Prettier/lint-staged on its own. Add those explicitly, if/when you want them:
+
+```bash
+npx commit-sheriff add-lint-staged     # plain ESLint + Prettier + lint-staged
+npx commit-sheriff add-eslint-react    # TypeScript/React module-boundary variant (sets up lint-staged too)
 ```
 
 This is the full flow end to end. The `Install`, `Usage`, and `What init does` sections below repeat
@@ -60,10 +67,9 @@ Different repos tend to drift into different commit-message and branch-naming co
 npm install --save-dev commit-sheriff husky
 ```
 
-`npx commit-sheriff init` installs `lint-staged`, `eslint`, and `prettier` for you automatically
-(via `npm install --save-dev`) if they're missing, so the pre-commit lint/format step is actually
-functional right away — you don't need to install them yourself first. This only happens as part
-of `init` (see below), not from installing `commit-sheriff` itself.
+`commit-sheriff` itself has no runtime dependencies of its own — installing it doesn't pull in
+ESLint, Prettier, or lint-staged. Those are only installed if you explicitly run
+`add-lint-staged` or `add-eslint-react` (see below).
 
 ## Usage
 
@@ -78,20 +84,42 @@ Run this once per repo, from the repo root (where `package.json` lives). This wo
 1. Initializes Husky if it isn't already set up (runs `npx husky init` when `.husky/_/husky.sh` is missing).
 2. Copies the hook scripts into `.husky/commit-msg` and `.husky/pre-commit` (overwriting any existing files with those exact names) and makes them executable.
 3. Creates a default `.commitsheriffrc.json` file at the repo root **only if one doesn't already exist** (and only if there's no legacy `package.json` → `commitGuard` block either — see [Configuration](#configuration-commitsheriffrcjson)) — re-running `init` never overwrites your customized config.
-4. Adds a default `lint-staged` block to `package.json` **only if one doesn't already exist**.
-5. Adds a `"prepare": "husky"` npm script if missing, so hooks are (re)installed automatically after `npm install`.
-6. Installs `lint-staged`, `eslint`, and `prettier` as devDependencies (via `npm install --save-dev`) if any of them are missing, so the pre-commit lint/format step actually runs instead of silently no-oping.
-7. If `react` and `typescript` are both present in your `dependencies`/`devDependencies`, also runs [`add-eslint-react`](#advanced-eslint-module-boundary-template-typescriptreact) automatically, which **overwrites** `eslint.config.mjs` and `.prettierrc.js` with the latest templates (folding in `next/core-web-vitals`/`next/typescript` automatically if `next` is detected) and installs the extra plugins it needs — no manual merge step. Otherwise it's skipped and you can add it manually later.
+4. Adds a `"prepare": "husky"` npm script if missing, so hooks are (re)installed automatically after `npm install`.
 
-Re-running `npx commit-sheriff init` later (e.g. after updating the package) is safe for your project-specific settings: it refreshes the hook scripts and (on react+typescript projects) the ESLint/Prettier templates to the latest version, but leaves your `.commitsheriffrc.json` / `lint-staged` config alone. `eslint.config.mjs`, `eslint.config.commit-sheriff.mjs`, and `.prettierrc.js` are **always overwritten** on every re-run — back them up under a different name first if you've hand-edited them.
+That's it — `init` doesn't touch ESLint, Prettier, or lint-staged, and it doesn't matter what's in
+your `dependencies` (react+typescript or otherwise). If you want the lint/format step to actually
+run something, add it explicitly:
 
-**Why the auto-install matters**: the pre-commit hook only runs `lint-staged` if it can actually
-find the package — if it's missing, older versions of this hook **silently skipped linting
-entirely**, so a broken/incomplete setup looked identical to a working one until someone noticed
-bad code slipping through. The hook itself is now hardened too: if `package.json` has a
-`lint-staged` config block but the package isn't actually installed (e.g. `node_modules` got
-wiped, or someone added the config by hand), the commit now **fails loudly** with instructions,
-instead of passing silently.
+```bash
+npx commit-sheriff add-lint-staged
+```
+
+Adds a default `lint-staged` block to `package.json` (only if one doesn't already exist) and
+installs `lint-staged`, `eslint`, and `prettier` as devDependencies if any are missing.
+
+```bash
+npx commit-sheriff add-eslint-react
+```
+
+Does everything `add-lint-staged` does, plus the [TypeScript/React module-boundary
+template](#advanced-eslint-module-boundary-template-typescriptreact) — **overwrites**
+`eslint.config.mjs` and `.prettierrc.js` with the latest templates (folding in
+`next/core-web-vitals`/`next/typescript` automatically if `next` is detected) and installs the
+extra plugins it needs. Safe to run on its own without running `add-lint-staged` first.
+
+Re-running any of these later (e.g. after updating the package) is safe for your project-specific
+settings: `.commitsheriffrc.json` and your `lint-staged` config block are left alone once they
+exist. `eslint.config.mjs`, `eslint.config.commit-sheriff.mjs`, and `.prettierrc.js` are **always
+overwritten** on every `add-eslint-react` run — back them up under a different name first if
+you've hand-edited them.
+
+**Why the pre-commit hook checks for the package, not just the config**: it only runs
+`lint-staged` if it can actually find the package — if it's missing, older versions of this hook
+**silently skipped linting entirely**, so a broken/incomplete setup looked identical to a working
+one until someone noticed bad code slipping through. If `package.json` has a `lint-staged` config
+block but the package isn't actually installed (e.g. `node_modules` got wiped, or someone added
+the config by hand), the commit now **fails loudly** with instructions, instead of passing
+silently.
 
 ## Commit message format
 
@@ -160,6 +188,7 @@ Add/edit this file at your project's **root** (next to `package.json`) — the `
 {
   "useModules": false,
   "project": "PROJ",
+  "modules": [],
   "branchTypes": [
     "feature",
     "bugfix",
@@ -204,7 +233,7 @@ Turns the `[MODULE]` tag on or off in both the commit message and the branch nam
 
 `string`, default `"PROJ"`.
 
-The project key used in the **branch name** check (`<type>/<PROJECT>-<NUMBER>-...`). Note this only constrains the branch name — the commit message ticket itself accepts any uppercase project key (`^\([A-Z]+-[0-9]+\)`), so it doesn't need to be repeated here for the commit-msg hook to work, but keeping it consistent with your Jira/Linear/etc. project key is recommended.
+The project key enforced in **both** the branch name (`<type>/<PROJECT>-<NUMBER>-...`) and the commit message ticket (`(<PROJECT>-<NUMBER>) type: ...`). Set this to your actual Jira/Linear/etc. project key — a ticket prefix that doesn't match (e.g. a typo, or a different project's key) is rejected by both hooks.
 
 ### `modules`
 
@@ -246,7 +275,7 @@ Any failure here aborts the commit.
 
 ## lint-staged
 
-The default config added by `init` (only if you don't already have one):
+The default config added by `add-lint-staged` / `add-eslint-react` (only if you don't already have one):
 
 ```json
 {
@@ -306,8 +335,8 @@ just fill in `modules` in `.commitsheriffrc.json` and it picks it up automatical
 This template assumes a `src/app/<module>/...` folder layout with `<module>.public.ts` barrel
 files; adjust the paths inside the generated config if your structure differs.
 
-It installs whatever it needs automatically (via `npm install --save-dev`, same as `init` does for
-`lint-staged`/`eslint`/`prettier`), skipping anything already present:
+It installs whatever it needs automatically (via `npm install --save-dev`), skipping anything
+already present:
 
 ```bash
 npm install --save-dev eslint@^9 typescript@^5 @typescript-eslint/parser \
@@ -409,6 +438,8 @@ npx commit-sheriff init
 ```
 
 `npm install` updates the package; `npx commit-sheriff init` re-copies the (possibly changed) `.husky/commit-msg` and `.husky/pre-commit` scripts. It will **not** touch your existing `.commitsheriffrc.json` (or legacy `commitGuard` in `package.json`) or `lint-staged` config.
+
+If you're using `add-lint-staged` or `add-eslint-react`, re-run that command too — it's the one that refreshes the generated ESLint/Prettier files (`init` never touches them).
 
 ## Skipping / bypassing hooks
 
