@@ -98,7 +98,7 @@ function ensureConfigFile() {
 }
 
 // Installs whatever in `packages` isn't already a listed dependency/devDependency, so the hooks
-// this tool wires up are actually functional right after `init`/`add-eslint-react` — not just
+// this tool wires up are actually functional right after `init`/`add-eslint` — not just
 // documented as a copy-paste command the user has to remember to run separately. Falls back to
 // printing the manual command if the install itself fails (offline, registry auth issue, etc.),
 // so the user isn't left silently thinking it worked.
@@ -146,25 +146,18 @@ function ensurePrepareScript() {
   }
 }
 
+// Always overwrites, same policy as the ESLint/Prettier templates below — no manual merge step,
+// ever. Back up your own lint-staged customizations under a different key first if you have any.
 function ensureLintStagedBlock() {
   const { pkgPath, pkg } = readPackageJson();
-  if (!pkg["lint-staged"]) {
-    pkg["lint-staged"] = DEFAULT_LINT_STAGED;
-    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-    console.log("✔ package.json → lint-staged configuration added");
-  } else {
-    console.log("• package.json already has a lint-staged block, left untouched");
-  }
+  pkg["lint-staged"] = DEFAULT_LINT_STAGED;
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+  console.log("✔ package.json → lint-staged configuration written (overwritten)");
 }
 
 // Opt-in, not run automatically by `init` — installing ESLint/Prettier/lint-staged onto a project
-// that didn't ask for them (or already has its own setup) is more surprising than helpful. Run
-// this explicitly, or run `add-eslint-react` which calls it too (it needs the lint-staged block
-// in place for its own generated ESLint config to actually run on commit).
-function addLintStaged() {
-  ensureConfigFile();
-  ensureLintStagedBlock();
-
+// that didn't ask for them is more surprising than helpful.
+function addLintStagedDeps() {
   // Without this, the pre-commit hook's `lint-staged` step silently no-ops when the package
   // itself isn't installed (it only checks whether *some* config/listing exists), so lint/format
   // checks would never actually run on commit even though everything *looks* set up. `eslint`
@@ -187,9 +180,7 @@ function init() {
 
   console.log(
     "\nHusky hooks are set up. ESLint/Prettier/lint-staged are opt-in, not installed by default —\n" +
-      "run `npx commit-sheriff add-lint-staged` when you want them, or\n" +
-      "`npx commit-sheriff add-eslint-react` for the TypeScript/React module-boundary variant\n" +
-      "(it sets up lint-staged too).\n",
+      "run `npx commit-sheriff add-eslint` when you want them.\n",
   );
 
   console.log(`\nDone. Adjust 'project' and, if needed, 'modules' in ${CONFIG_FILE_NAME}.\n`);
@@ -197,7 +188,7 @@ function init() {
 
 const ESLINT_REACT_DEV_DEPS = [
   // Pinned (not left to resolve to "latest") — see the comment on the eslint@^9 install in
-  // addLintStaged() for why: the plugin ecosystem here regularly lags behind ESLint's newest major.
+  // addLintStagedDeps() for why: the plugin ecosystem here regularly lags behind ESLint's newest major.
   // @eslint/js in particular is versioned in lockstep with ESLint core and its `latest` (10.x)
   // declares a hard peerDependency on eslint@^10 — installing it unpinned alongside eslint@^9
   // produces an immediate ERESOLVE conflict, which is exactly what this pin prevents.
@@ -328,16 +319,14 @@ function buildEslintEntryConfig(hasNext) {
   );
 }
 
-function addEslintReact() {
+function addEslint() {
   const { pkg } = readPackageJson();
   const deps = Object.assign({}, pkg.dependencies, pkg.devDependencies);
   const hasNext = Boolean(deps.next);
 
-  // So the generated ESLint config actually runs on commit even if `add-lint-staged` was never
-  // run separately — this command is meant to be usable entirely on its own. (Re-installing
-  // lint-staged/eslint/prettier here is a no-op if add-lint-staged already ran — ensureDevDeps
-  // only installs what's actually missing.)
-  addLintStaged();
+  ensureConfigFile();
+  ensureLintStagedBlock();
+  addLintStagedDeps();
 
   copyTemplateOverwrite("eslint.config.module-boundaries.mjs", RULES_FILE);
 
@@ -377,17 +366,12 @@ function addEslintReact() {
 
 if (command === "init") {
   init();
-} else if (command === "add-lint-staged") {
-  addLintStaged();
-} else if (command === "add-eslint-react") {
-  addEslintReact();
+} else if (command === "add-eslint") {
+  addEslint();
 } else {
   console.log("Usage: npx commit-sheriff init");
   console.log(
-    "     : npx commit-sheriff add-lint-staged     (optional, ESLint + Prettier + lint-staged)",
-  );
-  console.log(
-    "     : npx commit-sheriff add-eslint-react     (optional, TS/React module-boundary ESLint template)",
+    "     : npx commit-sheriff add-eslint   (optional, ESLint + Prettier + lint-staged, overwrites any existing setup)",
   );
   process.exit(command ? 1 : 0);
 }

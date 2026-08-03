@@ -13,8 +13,7 @@ npx commit-sheriff init
 ESLint/Prettier/lint-staged on its own. Add those explicitly, if/when you want them:
 
 ```bash
-npx commit-sheriff add-lint-staged     # plain ESLint + Prettier + lint-staged
-npx commit-sheriff add-eslint-react    # TypeScript/React module-boundary variant (sets up lint-staged too)
+npx commit-sheriff add-eslint
 ```
 
 This is the full flow end to end. The `Install`, `Usage`, and `What init does` sections below repeat
@@ -68,8 +67,8 @@ npm install --save-dev commit-sheriff husky
 ```
 
 `commit-sheriff` itself has no runtime dependencies of its own — installing it doesn't pull in
-ESLint, Prettier, or lint-staged. Those are only installed if you explicitly run
-`add-lint-staged` or `add-eslint-react` (see below).
+ESLint, Prettier, or lint-staged. Those are only installed if you explicitly run `add-eslint`
+(see below).
 
 ## Usage
 
@@ -88,30 +87,25 @@ Run this once per repo, from the repo root (where `package.json` lives). This wo
 
 That's it — `init` doesn't touch ESLint, Prettier, or lint-staged, and it doesn't matter what's in
 your `dependencies` (react+typescript or otherwise). If you want the lint/format step to actually
-run something, add it explicitly:
+run something, add it explicitly — there's a single command for this:
 
 ```bash
-npx commit-sheriff add-lint-staged
+npx commit-sheriff add-eslint
 ```
 
-Adds a default `lint-staged` block to `package.json` (only if one doesn't already exist) and
-installs `lint-staged`, `eslint`, and `prettier` as devDependencies if any are missing.
+Sets up the [TypeScript/React module-boundary
+template](#advanced-eslint-module-boundary-template-typescriptreact) end to end: writes
+`eslint.config.mjs`, `eslint.config.commit-sheriff.mjs`, and `.prettierrc.js` (folding in
+`next/core-web-vitals`/`next/typescript` automatically if `next` is detected), installs all the
+plugins it needs, and adds the `lint-staged` config block to `package.json`.
 
-```bash
-npx commit-sheriff add-eslint-react
-```
+**Everything it writes is overwritten every time you run it** — the `lint-staged` block included,
+even if you'd customized it. This is intentional (same policy as the ESLint templates
+themselves) — no manual merge step, ever. Back up your own customizations under a different name
+first if you have any, then re-apply them after.
 
-Does everything `add-lint-staged` does, plus the [TypeScript/React module-boundary
-template](#advanced-eslint-module-boundary-template-typescriptreact) — **overwrites**
-`eslint.config.mjs` and `.prettierrc.js` with the latest templates (folding in
-`next/core-web-vitals`/`next/typescript` automatically if `next` is detected) and installs the
-extra plugins it needs. Safe to run on its own without running `add-lint-staged` first.
-
-Re-running any of these later (e.g. after updating the package) is safe for your project-specific
-settings: `.commitsheriffrc.json` and your `lint-staged` config block are left alone once they
-exist. `eslint.config.mjs`, `eslint.config.commit-sheriff.mjs`, and `.prettierrc.js` are **always
-overwritten** on every `add-eslint-react` run — back them up under a different name first if
-you've hand-edited them.
+Re-running `add-eslint` later (e.g. after updating the package) refreshes all of the above to the
+latest version. `.commitsheriffrc.json` itself is left alone once it exists.
 
 **Why the pre-commit hook checks for the package, not just the config**: it only runs
 `lint-staged` if it can actually find the package — if it's missing, older versions of this hook
@@ -221,7 +215,7 @@ All keys are optional; anything you omit falls back to the default shown above. 
 
 ### Legacy `package.json` → `commitGuard` (backward compatibility)
 
-Versions of `commit-sheriff` before this config-file change stored the same settings under a `commitGuard` key in `package.json` instead. That still works: if no `.commitsheriffrc.json` file exists, the hooks (and the `add-eslint-react` template) fall back to reading `package.json`'s `commitGuard` block automatically, so existing installs keep working without any changes required. New installs (and any project without an existing `commitGuard` block) get the new `.commitsheriffrc.json` file instead — this is the recommended location going forward. To migrate an existing project by hand, move the contents of `commitGuard` out into a new root-level `.commitsheriffrc.json` file and delete the `commitGuard` key from `package.json`.
+Versions of `commit-sheriff` before this config-file change stored the same settings under a `commitGuard` key in `package.json` instead. That still works: if no `.commitsheriffrc.json` file exists, the hooks (and the `add-eslint` template) fall back to reading `package.json`'s `commitGuard` block automatically, so existing installs keep working without any changes required. New installs (and any project without an existing `commitGuard` block) get the new `.commitsheriffrc.json` file instead — this is the recommended location going forward. To migrate an existing project by hand, move the contents of `commitGuard` out into a new root-level `.commitsheriffrc.json` file and delete the `commitGuard` key from `package.json`.
 
 ### `useModules`
 
@@ -275,7 +269,7 @@ Any failure here aborts the commit.
 
 ## lint-staged
 
-The default config added by `add-lint-staged` / `add-eslint-react` (only if you don't already have one):
+The default config added by `add-eslint` (overwritten every run — see above):
 
 ```json
 {
@@ -291,8 +285,9 @@ That's the default ESLint behavior (`--fix` alone exits 0 on warning-only result
 `"warn"` (e.g. an unused import under some "recommended" configs) shows up in the terminal as a
 heads-up but doesn't stop you from committing.
 
-Adjust freely — `commit-sheriff` doesn't overwrite it once present. If you want warnings to block
-the commit too, add `--max-warnings=0` to the `eslint --fix` command by hand.
+Adjust freely, but remember `add-eslint` **overwrites this block on every run** (back it up under
+a different key first if you've customized it). If you want warnings to block the commit too, add
+`--max-warnings=0` to the `eslint --fix` command by hand.
 
 ## Advanced: ESLint module-boundary template (TypeScript/React)
 
@@ -301,7 +296,7 @@ Optional, separate from `init` — for projects that split feature code into mod
 other through a public barrel file, never through deep/internal paths:
 
 ```bash
-npx commit-sheriff add-eslint-react
+npx commit-sheriff add-eslint
 ```
 
 This ships as a **flat config** (`eslint.config.*`, ESLint 9+ format), not the legacy
@@ -439,7 +434,7 @@ npx commit-sheriff init
 
 `npm install` updates the package; `npx commit-sheriff init` re-copies the (possibly changed) `.husky/commit-msg` and `.husky/pre-commit` scripts. It will **not** touch your existing `.commitsheriffrc.json` (or legacy `commitGuard` in `package.json`) or `lint-staged` config.
 
-If you're using `add-lint-staged` or `add-eslint-react`, re-run that command too — it's the one that refreshes the generated ESLint/Prettier files (`init` never touches them).
+If you're using `add-eslint`, re-run that command too — it's the one that refreshes the generated ESLint/Prettier files and the `lint-staged` block (`init` never touches them).
 
 ## Skipping / bypassing hooks
 
