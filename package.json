@@ -1,6 +1,6 @@
 {
   "name": "commit-sheriff",
-  "version": "1.7.5",
+  "version": "1.7.6",
   "description": "Shared husky commit-msg / pre-commit hooks enforcing ticket-based commit messages and branch naming",
   "main": "index.js",
   "repository": {
